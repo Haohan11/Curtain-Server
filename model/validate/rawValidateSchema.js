@@ -1,0 +1,76 @@
+import * as Yup from "yup";
+
+/* 
+  Schemas here will automatically be export as validator (check validateSchema.js).
+*/
+
+export const validateEmployeeSchema = {
+  enable: Yup.boolean(),
+  role: Yup.number().integer(),
+  avatar: Yup.string(),
+  email: Yup.string().email().required(),
+  name: Yup.string().min(2).required(),
+  id_code: Yup.string()
+    .uppercase()
+    .matches(/^[A-Za-z]\d{9}$/)
+    .required(),
+  phone_number: Yup.string()
+    .matches(/^\d{10}$/)
+    .required(),
+  password: Yup.string()
+    .matches(/^(?=.*[a-zA-Z0-9].*[a-zA-Z0-9].*[a-zA-Z0-9].*[a-zA-Z0-9]).+$/)
+    .required(),
+};
+
+export const validateSeriesSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  code: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};
+
+export const validateEnvironmentSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};
+
+export const validateProductSchema = {
+  name: Yup.string().max(15).required(),
+  enable: Yup.boolean(),
+  code: Yup.string().max(15).required(),
+  series_id: Yup.number().integer().required(),
+  supplier_id: Yup.number().integer(),
+  main_image: Yup.string(),
+  block: Yup.string().matches(/^(1|2|3|4|5)$/),
+  absorption: Yup.string().matches(/^(1|2|3|4|5)$/),
+};
+
+export const validateProductImageSchema = {
+  name: Yup.string().max(15).required(),
+};
+
+export const validateColorSchemeSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};
+
+export const validateMaterialSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};
+
+export const validateDesignSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};
+
+export const validateSupplierSchema = {
+  enable: Yup.boolean(),
+  name: Yup.string().max(15).required(),
+  code: Yup.string().max(15).required(),
+  comment: Yup.string(),
+};

@@ -1,0 +1,277 @@
+import allValidator from "../model/validate/validator.js";
+
+import { goHash, getPage } from "../model/helper.js";
+
+/*
+  About regularController:
+
+  create "create", "read", "update" method for "get", "post", "put" request api in router.js.
+
+  Using tableName to access model instance ( req.app[tableName] ) which created by connectionMiddleware ( check connectToTable.js ).
+
+  Using tableName to get validator ( check validator.js ).
+
+  Creates a regular controller object for handling database operations.
+  @author haohan
+  
+  @param {Object} options - The options for creating the controller.
+  @param {string} options.tableName - The name of the database table.
+  @param {array} options.queryAttribute - The attribute to use in queries.
+
+  @returns {Object} A controller object with CRUD methods.
+*/
+
+const makeRegularController = ({ tableName, create = {}, read = {}, update = {} }) => {
+  const validator = allValidator[`validate${tableName}`];
+  return {
+    create: async (req, res) => {
+      const tableConnection = req.app[tableName];
+      const { handleData = (req, data) => data } = create;
+
+      const validatedData = await validator(req.body);
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const data = await handleData(req, validatedData);
+      if (data === false) return res.response(500);
+
+      try {
+        await tableConnection.create(data);
+        res.response(200, `Success added ${tableName}`);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+    read: async (req, res) => {
+      const tableConnection = req.app[tableName];
+      const { queryAttribute = [] } = read;
+
+      try {
+        const total = await tableConnection.count();
+        const { start, size, begin, totalPages } = getPage({
+          total,
+          ...req.query,
+        });
+
+        const list = await tableConnection.findAll({
+          offset: begin,
+          limit: size,
+          attributes: queryAttribute,
+        });
+
+        return res.response(200, {
+          start,
+          size,
+          begin,
+          total,
+          totalPages,
+          list,
+        });
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+    update: async (req, res) => {
+      const tableConnection = req.app[tableName];
+      const { handleData = (req, data) => data } = update;
+
+      // get id before check because checkdata will also remove data that is not in validate schema
+      const { id } = req.body;
+      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+
+      const validatedData = await validator(req.body);
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const data = await handleData(req, validatedData);
+      if (data === false) return res.response(500);
+
+      try {
+        await tableConnection.update(data, {
+          where: {
+            id,
+          },
+        });
+        res.response(200, `Updated ${tableName} data success.`);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  };
+};
+
+const SeriesController = makeRegularController({
+  tableName: "Series",
+  read: {
+    queryAttribute: ["id", "enable", "code", "name", "comment"],
+  },
+});
+
+const ColorSchemeController = makeRegularController({
+  tableName: "ColorScheme",
+  read: {
+    queryAttribute: ["id", "enable", "name", "comment"],
+  },
+});
+
+const DesignController = makeRegularController({
+  tableName: "Design",
+  read: {
+    queryAttribute: ["id", "enable", "name", "comment"],
+  },
+});
+
+const MaterialController = makeRegularController({
+  tableName: "Material",
+  read: {
+    queryAttribute: ["id", "enable", "name", "comment"],
+  },
+});
+
+const SupplierController = makeRegularController({
+  tableName: "Supplier",
+  read: {
+    queryAttribute: ["id", "enable", "code", "name", "comment"],
+  },
+});
+
+const EmployeeController = makeRegularController({
+  tableName: "Employee",
+  create: {
+    async handleData(req, data) {
+      const { Employee } = req.app
+
+      const { password } = data;
+      const hashedPassword = await goHash(password);
+
+      const code = await generateCode(Employee);
+      if (code === false) return false;
+
+      return { ...data, password: hashedPassword, code }
+    },
+  },
+  read: {
+    queryAttribute: [
+      "id",
+      "enable",
+      "role",
+      "code",
+      "name",
+      "id_code",
+      "phone_number",
+      "email",
+    ],
+  },
+  update: {
+    async handleData(req, data) {
+
+      const { password } = data;
+      const hashedPassword = await goHash(password);
+
+      return { ...data, password: hashedPassword }
+    },
+  }
+});
+
+const generateCode = async (Employee) => {
+  const date = new Date();
+  const yearString = (date.getFullYear() - 1911).toString();
+  const month = (date.getMonth() + 1).toString();
+  const monthString = padding(month, 2);
+
+  const id = await getId(Employee);
+  if (id === false) return false;
+
+  const idString = padding(id, 3);
+
+  return yearString + monthString + idString;
+};
+
+const getId = async (Employee) => {
+  try {
+    const row = await Employee.findOne({
+      attributes: ["id"],
+      order: [["id", "DESC"]],
+    });
+    return row?.id || 0;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+};
+
+const padding = (num, digits) => {
+  let str = num.toString();
+  while (str.length < digits) str = "0" + str;
+  return str;
+};
+
+const EnvironmentController = makeRegularController({
+  tableName: "Environment",
+  read: {
+    queryAttribute: ["id", "enable", "name", "comment"],
+  },
+});
+
+const ProductController = {
+  create: async (req, res) => {
+    const { Product } = req.app;
+    // const { validateProduct: validator } = allValidator;
+
+      // const validatedData = await validator(req.body);
+      // if (validatedData === false) return res.response(400, "Invalid format.");
+      return res.response(200, "Success receive data.", req.body)
+
+      try {
+        await Product.create(data);
+        res.response(200, "Success added Product");
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+  },
+  read: async (req, res) => {
+    // const tableConnection = req.app[tableName];
+      // const { queryAttribute = [] } = read;
+
+      try {
+        const total = 0;
+        const { start, size, begin, totalPages } = getPage({
+          ...req.query,
+          total,
+        });
+
+        const list = []
+
+        return res.response(200, {
+          start,
+          size,
+          begin,
+          total,
+          totalPages,
+          list,
+        });
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+  },
+  update: async (req, res) => {},
+};
+
+export {
+  SeriesController,
+  ColorSchemeController,
+  DesignController,
+  MaterialController,
+  SupplierController,
+  EmployeeController,
+  EnvironmentController,
+  ProductController,
+};

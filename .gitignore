@@ -1,0 +1,6 @@
+/node_modules
+
+connect_info.json
+
+.env
+.vscode/
