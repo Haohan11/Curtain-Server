@@ -40,8 +40,6 @@ const tablesDependencies = {
   },
 };
 
-const connectCache = {}
-
 const Routers = Object.entries(tablesDependencies).reduce(
   (dict, [table, content]) => {
     const router = express.Router();
@@ -50,9 +48,8 @@ const Routers = Object.entries(tablesDependencies).reduce(
 
     connectMiddlewares.forEach((middlewareName) => {
       // Add Sequelize Model instance to req.app
-      const connectName = `connect${middlewareName}`
-      const connectMiddleware = connectCache[connectName] ||=
-        allConnectMiddleware[connectName];
+      const connectName = `connect${middlewareName}`;
+      const connectMiddleware = allConnectMiddleware[connectName];
       return connectMiddleware === undefined
         ? console.warn(`Cannot find middleware "${connectName}".`)
         : router.use(connectMiddleware);
