@@ -3,4 +3,7 @@
 connect_info.json
 
 .env
+
+# vscode
 .vscode/
+*.code-workspace

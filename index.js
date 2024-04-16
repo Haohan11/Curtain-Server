@@ -12,7 +12,7 @@ const {
   MaterialRouter,
   DesignRouter,
   SupplierRouter,
-  ProductRouter
+  StockRouter
 } = Routers;
 
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
@@ -40,7 +40,7 @@ app.use("/color-scheme", ColorSchemeRouter);
 app.use("/material", MaterialRouter);
 app.use("/design", DesignRouter);
 app.use("/supplier", SupplierRouter);
-app.use("/product", ProductRouter);
+app.use("/stock", StockRouter);
 
 app.get("/", (req, res) => {
   res.response(200, "Hello world");

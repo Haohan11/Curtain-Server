@@ -35,7 +35,7 @@ export const validateEnvironmentSchema = {
   comment: Yup.string(),
 };
 
-export const validateProductSchema = {
+export const validateStockSchema = {
   name: Yup.string().max(15).required(),
   enable: Yup.boolean(),
   code: Yup.string().max(15).required(),
@@ -46,7 +46,7 @@ export const validateProductSchema = {
   absorption: Yup.string().matches(/^(1|2|3|4|5)$/),
 };
 
-export const validateProductImageSchema = {
+export const validateStockImageSchema = {
   name: Yup.string().max(15).required(),
 };
 

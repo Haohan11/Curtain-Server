@@ -217,18 +217,18 @@ const EnvironmentController = makeRegularController({
   },
 });
 
-const ProductController = {
+const StockController = {
   create: async (req, res) => {
-    const { Product } = req.app;
-    // const { validateProduct: validator } = allValidator;
+    const { Stock } = req.app;
+    // const { validateStock: validator } = allValidator;
 
       // const validatedData = await validator(req.body);
       // if (validatedData === false) return res.response(400, "Invalid format.");
       return res.response(200, "Success receive data.", req.body)
 
       try {
-        await Product.create(data);
-        res.response(200, "Success added Product");
+        await Stock.create(data);
+        res.response(200, "Success added Stock");
       } catch (error) {
         // log sql message with error.original.sqlMessage
         console.log(error);
@@ -273,5 +273,5 @@ export {
   SupplierController,
   EmployeeController,
   EnvironmentController,
-  ProductController,
+  StockController,
 };

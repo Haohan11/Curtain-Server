@@ -9,19 +9,19 @@ import { goHashSync } from "../helper.js";
 // user_id in employee (one-to-one)
 const user_id_foreignKey = { name: "user_id", type: DataTypes.INTEGER };
 
-// series_id in product (one-to-many)
+// series_id in stock (one-to-many)
 const series_id_foreignKey = {
   name: "series_id",
   type: DataTypes.INTEGER,
   allowNull: false,
 };
 
-// supplier_id in product (one-to-many)
+// supplier_id in stock (one-to-many)
 const supplier_id_foreignKey = { name: "supplier_id", type: DataTypes.INTEGER };
 //--------- foreignKeys above ---
 
 //--------- junction schema name below ---
-const product_colorScheme = "Product_ColorScheme";
+const stock_colorScheme = "Stock_ColorScheme";
 //--------- junction schema name above ---
 
 //--------- normal Schemas below ---
@@ -146,7 +146,7 @@ export const SeriesSchema = {
     tableName: "series",
   },
   hasMany: {
-    targetTable: "Product",
+    targetTable: "Stock",
     option: {
       foreignKey: series_id_foreignKey,
     },
@@ -176,8 +176,8 @@ export const EnvironmentSchema = {
   },
 };
 
-export const ProductSchema = {
-  name: "product",
+export const StockSchema = {
+  name: "stock",
   cols: {
     // -&achor-pr
     name: {
@@ -217,7 +217,7 @@ export const ProductSchema = {
     },
   },
   option: {
-    tableName: "product",
+    tableName: "stock",
   },
   belongsTo: [
     {
@@ -235,23 +235,23 @@ export const ProductSchema = {
     },
   ],
   hasMany: {
-    targetTable: "Product_ColorScheme",
+    targetTable: "Stock_ColorScheme",
     option: {
-      foreignKey: "product_id",
+      foreignKey: "stock_id",
     }
   },
   belongsToMany: {
     targetTable: "ColorScheme",
     option: {
-      through: product_colorScheme,
-      foreignKey: "product_id",
+      through: stock_colorScheme,
+      foreignKey: "stock_id",
       otherKey: "color_scheme_id",
     },
   },
 };
 
-export const ProductImageSchema = {
-  name: "product_image",
+export const StockImageSchema = {
+  name: "stock_image",
   cols: {
     // -&achor-p-img
     name: {
@@ -259,7 +259,7 @@ export const ProductImageSchema = {
       allowNull: false,
     },
     // -&achor-p-img
-    product_id: {
+    stock_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -270,7 +270,7 @@ export const ProductImageSchema = {
     },
   },
   option: {
-    tableName: "product_image",
+    tableName: "stock_image",
   },
 };
 
@@ -296,17 +296,17 @@ export const ColorSchemeSchema = {
     tableName: "color_scheme",
   },
   hasMany: {
-    targetTable: "Product_ColorScheme",
+    targetTable: "Stock_ColorScheme",
     option: {
       foreignKey: "color_scheme_id",
     }
   },
   belongsToMany: {
-    targetTable: "Product",
+    targetTable: "Stock",
     option: {
-      through: product_colorScheme,
+      through: stock_colorScheme,
       foreignKey: "color_scheme_id",
-      otherKey: "product_id",
+      otherKey: "stock_id",
     },
   },
 };
@@ -385,7 +385,7 @@ export const SupplierSchema = {
     tableName: "supplier",
   },
   hasMany: {
-    targetTable: "Product",
+    targetTable: "Stock",
     option: {
       foreignKey: supplier_id_foreignKey,
     },
@@ -394,13 +394,13 @@ export const SupplierSchema = {
 //--------- normal Schemas above ---
 
 //--------- junction schema below ---
-export const Product_ColorSchemeSchema = {
-  name: "product_colorScheme",
+export const Stock_ColorSchemeSchema = {
+  name: "stock_colorScheme",
   cols: {
-    product_id: {
+    stock_id: {
       type: DataTypes.INTEGER,
       references: {
-        model: "product",
+        model: "stock",
         key: "id"
       }
     },
@@ -413,19 +413,21 @@ export const Product_ColorSchemeSchema = {
     },
   },
   option: {
-    tableName: "product_colorScheme",
+    tableName: "stock_colorScheme",
   },
   belongsTo: [
     {
-      targetTable: "Product",
+      targetTable: "Stock",
       option: {
-        foreignKey: "product_id",
+        foreignKey: "stock_id",
+        allowNull: false
       }
     },
     {
       targetTable: "ColorScheme",
       option: {
         foreignKey: "color_scheme_id",
+        allowNull: false
       }
     },
   ],

@@ -34,9 +34,9 @@ const tablesDependencies = {
         tableName: "Environment",
         connectMiddlewares: ["Environment"]
     },
-    Product: {
-        tableName: "Product",
-        connectMiddlewares: ["Product"]
+    Stock: {
+        tableName: "Stock",
+        connectMiddlewares: ["Stock"]
     },
 }
 
