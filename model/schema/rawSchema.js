@@ -20,10 +20,6 @@ const series_id_foreignKey = {
 const supplier_id_foreignKey = { name: "supplier_id", type: DataTypes.INTEGER };
 //--------- foreignKeys above ---
 
-//--------- junction schema name below ---
-const stock_colorScheme = "Stock_ColorScheme";
-//--------- junction schema name above ---
-
 //--------- normal Schemas below ---
 export const UserSchema = {
   name: "user",
@@ -243,7 +239,7 @@ export const StockSchema = {
   belongsToMany: {
     targetTable: "ColorScheme",
     option: {
-      through: stock_colorScheme,
+      through: "Stock_ColorScheme",
       foreignKey: "stock_id",
       otherKey: "color_scheme_id",
     },
@@ -304,7 +300,7 @@ export const ColorSchemeSchema = {
   belongsToMany: {
     targetTable: "Stock",
     option: {
-      through: stock_colorScheme,
+      through: "Stock_ColorScheme",
       foreignKey: "color_scheme_id",
       otherKey: "stock_id",
     },
@@ -419,15 +415,13 @@ export const Stock_ColorSchemeSchema = {
     {
       targetTable: "Stock",
       option: {
-        foreignKey: "stock_id",
-        allowNull: false
+        foreignKey: { name: "stock_id", type: DataTypes.INTEGER, allowNull: false },
       }
     },
     {
       targetTable: "ColorScheme",
       option: {
-        foreignKey: "color_scheme_id",
-        allowNull: false
+        foreignKey: { name: "color_scheme_id", type: DataTypes.INTEGER, allowNull: false },
       }
     },
   ],

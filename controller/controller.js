@@ -104,42 +104,42 @@ const makeRegularController = ({ tableName, create = {}, read = {}, update = {} 
   };
 };
 
-const SeriesController = makeRegularController({
+export const SeriesController = makeRegularController({
   tableName: "Series",
   read: {
     queryAttribute: ["id", "enable", "code", "name", "comment"],
   },
 });
 
-const ColorSchemeController = makeRegularController({
+export const ColorSchemeController = makeRegularController({
   tableName: "ColorScheme",
   read: {
     queryAttribute: ["id", "enable", "name", "comment"],
   },
 });
 
-const DesignController = makeRegularController({
+export const DesignController = makeRegularController({
   tableName: "Design",
   read: {
     queryAttribute: ["id", "enable", "name", "comment"],
   },
 });
 
-const MaterialController = makeRegularController({
+export const MaterialController = makeRegularController({
   tableName: "Material",
   read: {
     queryAttribute: ["id", "enable", "name", "comment"],
   },
 });
 
-const SupplierController = makeRegularController({
+export const SupplierController = makeRegularController({
   tableName: "Supplier",
   read: {
     queryAttribute: ["id", "enable", "code", "name", "comment"],
   },
 });
 
-const EmployeeController = makeRegularController({
+export const EmployeeController = makeRegularController({
   tableName: "Employee",
   create: {
     async handleData(req, data) {
@@ -210,14 +210,14 @@ const padding = (num, digits) => {
   return str;
 };
 
-const EnvironmentController = makeRegularController({
+export const EnvironmentController = makeRegularController({
   tableName: "Environment",
   read: {
     queryAttribute: ["id", "enable", "name", "comment"],
   },
 });
 
-const StockController = {
+export const StockController = {
   create: async (req, res) => {
     const { Stock } = req.app;
     // const { validateStock: validator } = allValidator;
@@ -263,15 +263,4 @@ const StockController = {
       }
   },
   update: async (req, res) => {},
-};
-
-export {
-  SeriesController,
-  ColorSchemeController,
-  DesignController,
-  MaterialController,
-  SupplierController,
-  EmployeeController,
-  EnvironmentController,
-  StockController,
 };

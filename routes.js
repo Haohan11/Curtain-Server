@@ -1,64 +1,75 @@
 import express from "express";
 
 import { allConnectMiddleware } from "./middleware/connectToTable.js";
-import addAuthor from "./middleware/addAuthor.js"
+import addAuthor from "./middleware/addAuthor.js";
 
 import * as AllController from "./controller/controller.js";
 
 const tablesDependencies = {
-    Series: {
-        tableName: "Series",
-        connectMiddlewares: ["Series"]
-    },
-    ColorScheme: {
-        tableName: "ColorScheme",
-        connectMiddlewares: ["ColorScheme"]
-    },
-    Design: {
-        tableName: "Design",
-        connectMiddlewares: ["Design"]
-    },
-    Material: {
-        tableName: "Material",
-        connectMiddlewares: ["Material"]
-    },
-    Supplier: {
-        tableName: "Supplier",
-        connectMiddlewares: ["Supplier"]
-    },
-    Employee: {
-        tableName: "Employee",
-        connectMiddlewares: ["Employee"]
-    },
-    Environment: {
-        tableName: "Environment",
-        connectMiddlewares: ["Environment"]
-    },
-    Stock: {
-        tableName: "Stock",
-        connectMiddlewares: ["Stock"]
-    },
-}
+  Series: {
+    tableName: "Series",
+    connectMiddlewares: ["Series"],
+  },
+  ColorScheme: {
+    tableName: "ColorScheme",
+    connectMiddlewares: ["ColorScheme"],
+  },
+  Design: {
+    tableName: "Design",
+    connectMiddlewares: ["Design"],
+  },
+  Material: {
+    tableName: "Material",
+    connectMiddlewares: ["Material"],
+  },
+  Supplier: {
+    tableName: "Supplier",
+    connectMiddlewares: ["Supplier"],
+  },
+  Employee: {
+    tableName: "Employee",
+    connectMiddlewares: ["Employee"],
+  },
+  Environment: {
+    tableName: "Environment",
+    connectMiddlewares: ["Environment"],
+  },
+  Stock: {
+    tableName: "Stock",
+    connectMiddlewares: ["Stock", "Material", "Design", "Environment"],
+  },
+};
 
-const Routers = Object.entries(tablesDependencies).reduce((dict, [table, content]) => {
+const connectCache = {}
+
+const Routers = Object.entries(tablesDependencies).reduce(
+  (dict, [table, content]) => {
     const router = express.Router();
 
-    const { tableName, connectMiddlewares } = content
+    const { tableName, connectMiddlewares } = content;
 
-    connectMiddlewares.forEach(middlewareName => {
-        // Add Sequelize Model instance to req.app
-        router.use(allConnectMiddleware[`connect${middlewareName}`])
-    })
-    const controller = AllController[`${tableName}Controller`]
-    
+    connectMiddlewares.forEach((middlewareName) => {
+      // Add Sequelize Model instance to req.app
+      const connectName = `connect${middlewareName}`
+      const connectMiddleware = connectCache[connectName] ||=
+        allConnectMiddleware[connectName];
+      return connectMiddleware === undefined
+        ? console.warn(`Cannot find middleware "${connectName}".`)
+        : router.use(connectMiddleware);
+    });
+
+    const controller = AllController[`${tableName}Controller`];
+
     router.use(addAuthor);
-    
+
     router.get("/", controller.read);
     router.post("/", controller.create);
     router.put("/", controller.update);
 
-    dict[`${tableName}Router`] = router
-    return dict
-}, {})
+    dict[`${tableName}Router`] = router;
+    return dict;
+  },
+  {}
+);
 
 export { Routers };
