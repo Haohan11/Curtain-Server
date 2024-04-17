@@ -270,6 +270,25 @@ export const StockImageSchema = {
   },
 };
 
+export const ColorSchema = {
+  name: "color",
+  cols: {
+    // -&achor-c
+    name: {
+      type: DataTypes.CHAR(15),
+      allowNull: false,
+    },
+    // -&achor-c
+    enable: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+  },
+  option: {
+    tableName: "color",
+  },
+}
+
 export const ColorSchemeSchema = {
   name: "color_scheme",
   cols: {

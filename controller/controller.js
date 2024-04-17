@@ -118,6 +118,13 @@ export const ColorSchemeController = makeRegularController({
   },
 });
 
+export const ColorController = makeRegularController({
+  tableName: "Color",
+  read: {
+    queryAttribute: ["id", "enable", "name"],
+  },
+});
+
 export const DesignController = makeRegularController({
   tableName: "Design",
   read: {

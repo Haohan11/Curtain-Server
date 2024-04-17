@@ -10,6 +10,10 @@ const tablesDependencies = {
     tableName: "Series",
     connectMiddlewares: ["Series"],
   },
+  Color: {
+    tableName: "Color",
+    connectMiddlewares: ["Color"],
+  },
   ColorScheme: {
     tableName: "ColorScheme",
     connectMiddlewares: ["ColorScheme"],
