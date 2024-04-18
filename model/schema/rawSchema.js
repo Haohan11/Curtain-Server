@@ -7,17 +7,27 @@ import { goHashSync } from "../helper.js";
 
 //--------- foreignKeys below ---
 // user_id in employee (one-to-one)
-const user_id_foreignKey = { name: "user_id", type: DataTypes.INTEGER };
+const user_id_in_employee = { name: "user_id", type: DataTypes.INTEGER };
 
 // series_id in stock (one-to-many)
-const series_id_foreignKey = {
+const series_id_in_stock = {
   name: "series_id",
   type: DataTypes.INTEGER,
   allowNull: false,
 };
 
 // supplier_id in stock (one-to-many)
-const supplier_id_foreignKey = { name: "supplier_id", type: DataTypes.INTEGER };
+const supplier_id_in_stock = { name: "supplier_id", type: DataTypes.INTEGER };
+
+// stock_id in stock-color
+const stock_id_in_stockColor = { name: "stock_id", type: DataTypes.INTEGER };
+
+// colorname in stock-color
+const colorName_id_in_stockColor = {
+  name: "color_name_id",
+  type: DataTypes.INTEGER,
+  allowNull: false,
+};
 //--------- foreignKeys above ---
 
 //--------- normal Schemas below ---
@@ -54,7 +64,7 @@ export const UserSchema = {
   hasOne: {
     targetTable: "Employee",
     option: {
-      foreignKey: user_id_foreignKey,
+      foreignKey: user_id_in_employee,
       onDelete: "SET NULL",
     },
   },
@@ -109,7 +119,7 @@ export const EmployeeSchema = {
   belongsTo: {
     targetTable: "User",
     option: {
-      foreignKey: user_id_foreignKey,
+      foreignKey: user_id_in_employee,
     },
   },
 };
@@ -144,7 +154,7 @@ export const SeriesSchema = {
   hasMany: {
     targetTable: "Stock",
     option: {
-      foreignKey: series_id_foreignKey,
+      foreignKey: series_id_in_stock,
     },
   },
 };
@@ -175,39 +185,39 @@ export const EnvironmentSchema = {
 export const StockSchema = {
   name: "stock",
   cols: {
-    // -&achor-pr
+    // -&achor-st
     name: {
       type: DataTypes.CHAR(15),
       allowNull: false,
     },
-    // -&achor-pr
+    // -&achor-st
     enable: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    // -&achor-pr
+    // -&achor-st
     code: {
       type: DataTypes.CHAR(15),
       allowNull: false,
     },
-    // -&achor-pr
+    // -&achor-st
     series_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    // -&achor-pr
+    // -&achor-st
     supplier_id: {
       type: DataTypes.INTEGER,
     },
-    // -&achor-pr
+    // -&achor-st
     main_image: {
       type: DataTypes.STRING(2048),
     },
-    // -&achor-pr
+    // -&achor-st
     block: {
       type: DataTypes.ENUM("1", "2", "3", "4", "5"),
     },
-    // -&achor-pr
+    // -&achor-st
     absorption: {
       type: DataTypes.ENUM("1", "2", "3", "4", "5"),
     },
@@ -219,28 +229,66 @@ export const StockSchema = {
     {
       targetTable: "Series",
       option: {
-        foreignKey: series_id_foreignKey,
+        foreignKey: series_id_in_stock,
       },
     },
     {
       targetTable: "Supplier",
       option: {
-        foreignKey: supplier_id_foreignKey,
+        foreignKey: supplier_id_in_stock,
         onDelete: "SET NULL",
       },
     },
   ],
   hasMany: {
-    targetTable: "Stock_ColorScheme",
+    targetTable: "StockColor",
     option: {
-      foreignKey: "stock_id",
-    }
+      foreignKey: stock_id_in_stockColor,
+    },
+  },
+};
+
+export const StockColorSchema = {
+  name: "stock_color",
+  cols: {
+    // -&achor-sc
+    color_name_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    stock_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  option: {
+    tableName: "stock_color",
+  },
+  belongsTo: [
+    {
+      targetTable: "ColorName",
+      option: {
+        foreignKey: colorName_id_in_stockColor,
+      },
+    },
+    {
+      targetTable: "Stock",
+      option: {
+        foreignKey: stock_id_in_stockColor,
+      },
+    },
+  ],
+  hasMany: {
+    targetTable: "StockColor_ColorScheme",
+    option: {
+      foreignKey: "stock_color_id",
+    },
   },
   belongsToMany: {
     targetTable: "ColorScheme",
     option: {
-      through: "Stock_ColorScheme",
-      foreignKey: "stock_id",
+      through: "StockColor_ColorScheme",
+      foreignKey: "stock_color_id",
       otherKey: "color_scheme_id",
     },
   },
@@ -287,7 +335,7 @@ export const ColorNameSchema = {
   option: {
     tableName: "color_name",
   },
-}
+};
 
 export const ColorSchemeSchema = {
   name: "color_scheme",
@@ -311,17 +359,17 @@ export const ColorSchemeSchema = {
     tableName: "color_scheme",
   },
   hasMany: {
-    targetTable: "Stock_ColorScheme",
+    targetTable: "StockColor_ColorScheme",
     option: {
       foreignKey: "color_scheme_id",
-    }
+    },
   },
   belongsToMany: {
-    targetTable: "Stock",
+    targetTable: "StockColor",
     option: {
-      through: "Stock_ColorScheme",
+      through: "StockColor_ColorScheme",
       foreignKey: "color_scheme_id",
-      otherKey: "stock_id",
+      otherKey: "stock_color_id",
     },
   },
 };
@@ -402,46 +450,100 @@ export const SupplierSchema = {
   hasMany: {
     targetTable: "Stock",
     option: {
-      foreignKey: supplier_id_foreignKey,
+      foreignKey: supplier_id_in_stock,
     },
   },
 };
 //--------- normal Schemas above ---
 
 //--------- junction schema below ---
-export const Stock_ColorSchemeSchema = {
-  name: "stock_colorScheme",
+export const StockColor_ColorSchemeSchema = {
+  name: "stockColor_colorScheme",
   cols: {
-    stock_id: {
+    stock_color_id: {
       type: DataTypes.INTEGER,
       references: {
-        model: "stock",
-        key: "id"
-      }
+        model: "stock_color",
+        key: "id",
+      },
     },
     color_scheme_id: {
       type: DataTypes.INTEGER,
       references: {
         model: "color_scheme",
-        key: "id"
-      }
+        key: "id",
+      },
     },
   },
   option: {
-    tableName: "stock_colorScheme",
+    tableName: "stockColor_colorScheme",
   },
   belongsTo: [
     {
-      targetTable: "Stock",
+      targetTable: "StockColor",
       option: {
-        foreignKey: { name: "stock_id", type: DataTypes.INTEGER, allowNull: false },
-      }
+        foreignKey: {
+          name: "stock_color_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
     },
     {
       targetTable: "ColorScheme",
       option: {
-        foreignKey: { name: "color_scheme_id", type: DataTypes.INTEGER, allowNull: false },
-      }
+        foreignKey: {
+          name: "color_scheme_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
     },
   ],
 };
+
+export const Stock_MaterialSchema = {
+  name: "stock_material",
+  cols: {
+    stock_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock",
+        key: "id",
+      },
+    },
+    material_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "material",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "stock_material",
+  },
+  belongsTo: [
+    {
+      targetTable: "StockColor",
+      option: {
+        foreignKey: {
+          name: "stock_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "ColorScheme",
+      option: {
+        foreignKey: {
+          name: "color_scheme_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+};
+//--------- junction schema above ---
