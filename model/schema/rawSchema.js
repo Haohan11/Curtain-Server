@@ -270,8 +270,8 @@ export const StockImageSchema = {
   },
 };
 
-export const ColorSchema = {
-  name: "color",
+export const ColorNameSchema = {
+  name: "color_name",
   cols: {
     // -&achor-c
     name: {
@@ -285,7 +285,7 @@ export const ColorSchema = {
     },
   },
   option: {
-    tableName: "color",
+    tableName: "color_name",
   },
 }
 
