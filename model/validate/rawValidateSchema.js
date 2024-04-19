@@ -1,7 +1,7 @@
 import * as Yup from "yup";
 
 /* 
-  Schemas here will automatically be export as validator (check validateSchema.js).
+  Schemas here will automatically be export as validator (check validateSchema.js and validator.js).
 */
 
 export const validateEmployeeSchema = {
@@ -41,7 +41,6 @@ export const validateStockSchema = {
   code: Yup.string().max(15).required(),
   series_id: Yup.number().integer().required(),
   supplier_id: Yup.number().integer(),
-  main_image: Yup.string(),
   block: Yup.string().matches(/^(1|2|3|4|5)$/),
   absorption: Yup.string().matches(/^(1|2|3|4|5)$/),
 };

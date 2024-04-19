@@ -143,3 +143,5 @@ export const addPadding = (() => {
     };
   };
 })();
+
+export const not0Falsy2Undefined = (target) => target || target === 0 ? target : undefined

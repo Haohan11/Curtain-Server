@@ -1,6 +1,6 @@
 import allValidator from "../model/validate/validator.js";
 
-import { goHash, getPage } from "../model/helper.js";
+import { goHash, getPage, not0Falsy2Undefined } from "../model/helper.js";
 
 /*
   About regularController:
@@ -21,7 +21,12 @@ import { goHash, getPage } from "../model/helper.js";
   @returns {Object} A controller object with CRUD methods.
 */
 
-const makeRegularController = ({ tableName, create = {}, read = {}, update = {} }) => {
+const makeRegularController = ({
+  tableName,
+  create = {},
+  read = {},
+  update = {},
+}) => {
   const validator = allValidator[`validate${tableName}`];
   return {
     create: async (req, res) => {
@@ -150,7 +155,7 @@ export const EmployeeController = makeRegularController({
   tableName: "Employee",
   create: {
     async handleData(req, data) {
-      const { Employee } = req.app
+      const { Employee } = req.app;
 
       const { password } = data;
       const hashedPassword = await goHash(password);
@@ -158,7 +163,7 @@ export const EmployeeController = makeRegularController({
       const code = await generateCode(Employee);
       if (code === false) return false;
 
-      return { ...data, password: hashedPassword, code }
+      return { ...data, password: hashedPassword, code };
     },
   },
   read: {
@@ -175,13 +180,12 @@ export const EmployeeController = makeRegularController({
   },
   update: {
     async handleData(req, data) {
-
       const { password } = data;
       const hashedPassword = await goHash(password);
 
-      return { ...data, password: hashedPassword }
+      return { ...data, password: hashedPassword };
     },
-  }
+  },
 });
 
 const generateCode = async (Employee) => {
@@ -226,48 +230,82 @@ export const EnvironmentController = makeRegularController({
 
 export const StockController = {
   create: async (req, res) => {
-    const { Stock } = req.app;
-    // const { validateStock: validator } = allValidator;
+    const { Stock, Stock_Material, Stock_Design, Stock_Environment } = req.app;
+    const { validateStock: validator } = allValidator;
 
-      // const validatedData = await validator(req.body);
-      // if (validatedData === false) return res.response(400, "Invalid format.");
-      return res.response(200, "Success receive data.", req.body)
+    const validatedData = await validator({
+      ...req.body,
+      series_id: req.body.series,
+      supplier_id: not0Falsy2Undefined(req.body.supplier),
+    });
+    if (validatedData === false) return res.response(400, "Invalid format.");
+    // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
 
-      try {
-        await Stock.create(data);
-        res.response(200, "Success added Stock");
-      } catch (error) {
-        // log sql message with error.original.sqlMessage
-        console.log(error);
-        res.response(500);
-      }
+    try {
+      const stock = await Stock.create(validatedData);
+
+      // save material design and environment
+      await Promise.all(
+        Object.entries({
+          material: Stock_Material,
+          design: Stock_Design,
+          environment: Stock_Environment,
+        }).map(async ([modelName, Model]) => {
+          const insert_data =
+            Array.isArray(req.body[modelName]) &&
+            req.body[modelName].reduce(
+              (list, id) =>
+                not0Falsy2Undefined(id) === undefined
+                  ? list
+                  : [
+                      ...list,
+                      {
+                        ...req.body._author,
+                        stock_id: stock.id,
+                        [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                      },
+                    ],
+              []
+            );
+
+          Model.removeAttribute("id");
+          await Model.bulkCreate(insert_data);
+        })
+      );
+
+      res.response(200, "Success added Stock");
+    } catch (error) {
+      // log sql message with error.original.sqlMessage
+      console.log(error);
+      res.response(500);
+    }
   },
   read: async (req, res) => {
     // const tableConnection = req.app[tableName];
-      // const { queryAttribute = [] } = read;
+    // const { queryAttribute = [] } = read;
 
-      try {
-        const total = 0;
-        const { start, size, begin, totalPages } = getPage({
-          ...req.query,
-          total,
-        });
+    try {
+      const total = 0;
+      const { start, size, begin, totalPages } = getPage({
+        ...req.query,
+        total,
+      });
 
-        const list = []
+      const list = [];
 
-        return res.response(200, {
-          start,
-          size,
-          begin,
-          total,
-          totalPages,
-          list,
-        });
-      } catch (error) {
-        // log sql message with error.original.sqlMessage
-        console.log(error);
-        res.response(500);
-      }
+      return res.response(200, {
+        start,
+        size,
+        begin,
+        total,
+        totalPages,
+        list,
+      });
+    } catch (error) {
+      // log sql message with error.original.sqlMessage
+      console.log(error);
+      res.response(500);
+    }
   },
   update: async (req, res) => {},
 };

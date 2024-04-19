@@ -10,6 +10,7 @@ const addAuthorMiddleware = (req, res, next) => {
   req.body = {
     ...req.body,
     ...author,
+    _author: author
   };
   next();
 };

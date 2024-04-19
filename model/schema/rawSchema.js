@@ -187,10 +187,6 @@ export const StockSchema = {
       type: DataTypes.INTEGER,
     },
     // -&achor-st
-    main_image: {
-      type: DataTypes.STRING(2048),
-    },
-    // -&achor-st
     block: {
       type: DataTypes.ENUM("1", "2", "3", "4", "5"),
     },

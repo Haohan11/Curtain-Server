@@ -40,7 +40,7 @@ const tablesDependencies = {
   },
   Stock: {
     tableName: "Stock",
-    connectMiddlewares: ["Stock", "StockColor", "Material", "Design", "Environment"],
+    connectMiddlewares: ["Stock", "Stock_Material", "Stock_Design", "Stock_Environment"],
   },
 };
 
