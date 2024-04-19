@@ -159,29 +159,6 @@ export const SeriesSchema = {
   },
 };
 
-export const EnvironmentSchema = {
-  name: "environment",
-  cols: {
-    // -&achor-env
-    name: {
-      type: DataTypes.CHAR(15),
-      allowNull: false,
-    },
-    // -&achor-env
-    enable: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    // -&achor-env
-    comment: {
-      type: DataTypes.TEXT("long"),
-    },
-  },
-  option: {
-    tableName: "environment",
-  },
-};
-
 export const StockSchema = {
   name: "stock",
   cols: {
@@ -240,12 +217,40 @@ export const StockSchema = {
       },
     },
   ],
-  hasMany: {
-    targetTable: "StockColor",
-    option: {
-      foreignKey: stock_id_in_stockColor,
+  belongsToMany: [
+    {
+      targetTable: "StockColor",
+      option: {
+        through: "Stock_StockColor",
+        foreignKey: "stock_id",
+        otherKey: "stock_color_id",
+      },
     },
-  },
+    {
+      targetTable: "Material",
+      option: {
+        through: "Stock_Material",
+        foreignKey: "stock_id",
+        otherKey: "material_id",
+      },
+    },
+    {
+      targetTable: "Design",
+      option: {
+        through: "Stock_Design",
+        foreignKey: "stock_id",
+        otherKey: "design_id",
+      },
+    },
+    {
+      targetTable: "Environment",
+      option: {
+        through: "Stock_Environment",
+        foreignKey: "stock_id",
+        otherKey: "environment_id",
+      },
+    },
+  ],
 };
 
 export const StockColorSchema = {
@@ -284,14 +289,24 @@ export const StockColorSchema = {
       foreignKey: "stock_color_id",
     },
   },
-  belongsToMany: {
-    targetTable: "ColorScheme",
-    option: {
-      through: "StockColor_ColorScheme",
-      foreignKey: "stock_color_id",
-      otherKey: "color_scheme_id",
+  belongsToMany: [
+    {
+      targetTable: "ColorScheme",
+      option: {
+        through: "StockColor_ColorScheme",
+        foreignKey: "stock_color_id",
+        otherKey: "color_scheme_id",
+      },
     },
-  },
+    {
+      targetTable: "Stock",
+      option: {
+        through: "Stock_StockColor",
+        foreignKey: "stock_color_id",
+        otherKey: "stock_id",
+      },
+    },
+  ],
 };
 
 export const StockImageSchema = {
@@ -395,6 +410,14 @@ export const MaterialSchema = {
   option: {
     tableName: "material",
   },
+  belongsToMany: {
+    targetTable: "Stock",
+    option: {
+      through: "Stock_Material",
+      foreignKey: "material_id",
+      otherKey: "stock_id",
+    },
+  },
 };
 
 export const DesignSchema = {
@@ -417,6 +440,14 @@ export const DesignSchema = {
   },
   option: {
     tableName: "design",
+  },
+  belongsToMany: {
+    targetTable: "Stock",
+    option: {
+      through: "Stock_Design",
+      foreignKey: "design_id",
+      otherKey: "stock_id",
+    },
   },
 };
 
@@ -451,6 +482,37 @@ export const SupplierSchema = {
     targetTable: "Stock",
     option: {
       foreignKey: supplier_id_in_stock,
+    },
+  },
+};
+
+export const EnvironmentSchema = {
+  name: "environment",
+  cols: {
+    // -&achor-env
+    name: {
+      type: DataTypes.CHAR(15),
+      allowNull: false,
+    },
+    // -&achor-env
+    enable: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    // -&achor-env
+    comment: {
+      type: DataTypes.TEXT("long"),
+    },
+  },
+  option: {
+    tableName: "environment",
+  },
+  belongsToMany: {
+    targetTable: "Stock",
+    option: {
+      through: "Stock_Environment",
+      foreignKey: "environment_id",
+      otherKey: "stock_id",
     },
   },
 };
@@ -502,6 +564,47 @@ export const StockColor_ColorSchemeSchema = {
   ],
 };
 
+export const Stock_StockColorSchema = {
+  name: "stock_stockColor",
+  cols: {
+    stock_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock",
+        key: "id",
+      },
+    },
+    stock_color_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock_color",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "stock_stockColor",
+  },
+  belongsTo: [
+    {
+      targetTable: "Stock",
+      option: {
+        foreignKey: {
+          name: "stock_id",
+        },
+      },
+    },
+    {
+      targetTable: "StockColor",
+      option: {
+        foreignKey: {
+          name: "stock_color_id",
+        },
+      },
+    },
+  ],
+};
+
 export const Stock_MaterialSchema = {
   name: "stock_material",
   cols: {
@@ -525,7 +628,7 @@ export const Stock_MaterialSchema = {
   },
   belongsTo: [
     {
-      targetTable: "StockColor",
+      targetTable: "Stock",
       option: {
         foreignKey: {
           name: "stock_id",
@@ -535,10 +638,100 @@ export const Stock_MaterialSchema = {
       },
     },
     {
-      targetTable: "ColorScheme",
+      targetTable: "Material",
       option: {
         foreignKey: {
-          name: "color_scheme_id",
+          name: "material_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+};
+
+export const Stock_DesignSchema = {
+  name: "stock_design",
+  cols: {
+    stock_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock",
+        key: "id",
+      },
+    },
+    design_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "design",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "stock_design",
+  },
+  belongsTo: [
+    {
+      targetTable: "Stock",
+      option: {
+        foreignKey: {
+          name: "stock_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "Design",
+      option: {
+        foreignKey: {
+          name: "design_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+};
+
+export const Stock_EnvironmentSchema = {
+  name: "stock_environment",
+  cols: {
+    stock_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock",
+        key: "id",
+      },
+    },
+    environment_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "environment",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "stock_environment",
+  },
+  belongsTo: [
+    {
+      targetTable: "Stock",
+      option: {
+        foreignKey: {
+          name: "stock_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "Environment",
+      option: {
+        foreignKey: {
+          name: "environment_id",
           type: DataTypes.INTEGER,
           allowNull: false,
         },
