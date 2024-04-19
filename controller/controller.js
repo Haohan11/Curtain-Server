@@ -237,6 +237,7 @@ export const StockController = {
       Stock_Environment,
       StockColor,
       ColorName,
+      Stock_StockColor,
       StockColor_ColorScheme,
     } = req.app;
     const { validateStock: validator } = allValidator;
@@ -249,6 +250,11 @@ export const StockController = {
 
     if (validatedData === false) return res.response(400, "Invalid format.");
     // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
+
+    const result = {
+      message: "Success inserted",
+      data: {}
+    }
 
     try {
       const stock = await Stock.create(validatedData);
@@ -281,10 +287,12 @@ export const StockController = {
 
           Model.removeAttribute("id");
           await Model.bulkCreate(insert_data);
+
+          result.message += ` "${modelName}",`
         })
       );
 
-      // format color data
+      // loop req.body for color_index and colorScheme_index
       const colorData = Object.entries(req.body).reduce(
         (list, [key, value]) => {
           const [target, _index] = key.split("_");
@@ -321,6 +329,15 @@ export const StockController = {
             name,
             color_name_id: color,
           });
+          result.message += " stock_color,"
+
+          Stock_StockColor.removeAttribute("id");
+          await Stock_StockColor.create({
+            ...req.body._author,
+            stock_id: stock.id,
+            stock_color_id,
+          })
+          result.message += " stock_stockcolor,"
 
           const insert_data = colorScheme.reduce((list, scheme) => {
             const schemeId = parseInt(scheme);
@@ -338,14 +355,15 @@ export const StockController = {
 
           StockColor_ColorScheme.removeAttribute("id");
           await StockColor_ColorScheme.bulkCreate(insert_data);
+          result.message += " stockcolor_colorscheme,"
         })
       );
 
-      res.response(200, "Success add Stock");
+      res.response(200, result.message);
     } catch (error) {
       // log sql message with error.original.sqlMessage
       console.log(error);
-      res.response(500);
+      res.response(500, `Internal server error and ${result.message}.`);
     }
   },
   read: async (req, res) => {
