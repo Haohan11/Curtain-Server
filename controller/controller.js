@@ -238,9 +238,10 @@ export const EnvironmentController = makeRegularController({
 export const StockController = {
   create: [
     uploadStockImage.array("colorImages"),
-    (req, res) => {
-      if (!req.files) return res.response(500);
-      res.response(200, req.files)
+    (req, res, next) => {
+      // if (!req.files) return res.response(500);
+      // res.response(200, { body: req.body, files: req.files });
+      next()
     },
     async (req, res) => {
       const {
@@ -273,7 +274,7 @@ export const StockController = {
         const stock = await Stock.create(validatedData);
 
         // save material design and environment
-        await Promise.all(
+        false && await Promise.all(
           Object.entries({
             material: Stock_Material,
             design: Stock_Design,
@@ -306,8 +307,8 @@ export const StockController = {
         );
 
         // loop req.body for color_index and colorScheme_index
-        const colorData = Object.entries(req.body).reduce(
-          (list, [key, value]) => {
+        const colorData = Object.entries(req.body)
+          .reduce((list, [key, value]) => {
             const [target, _index] = key.split("_");
             const index = parseInt(_index);
             if (
@@ -324,9 +325,11 @@ export const StockController = {
             };
 
             return list;
-          },
-          []
-        );
+          }, [])
+          .filter(Boolean);
+
+        return res.response(200, {equal: colorData.length * 3 === req.files})
+        // if(colorData.length !== req.files) return res.response(400)
 
         // save color data
         await Promise.all(
