@@ -1,4 +1,6 @@
 import bcrypt from "bcrypt";
+import multer from "multer";
+import crypto from "crypto";
 
 export const goHash = (() => {
   const saltRound = 10;
@@ -144,4 +146,34 @@ export const addPadding = (() => {
   };
 })();
 
-export const not0Falsy2Undefined = (target) => target || target === 0 ? target : undefined
+export const not0Falsy2Undefined = (target) =>
+  target || target === 0 ? target : undefined;
+
+export const createUploadImage = (() => {
+  const extMap = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+  };
+
+  return (destination) => {
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        console.log("========================================================")
+        cb(null, `storage/app/public/${destination}`);
+      },
+      filename: (req, file, cb) => {
+        const ext = extMap[file.mimetype];
+        cb(null, crypto.randomUUID() + ext);
+      },
+    });
+  
+    const fileFilter = (req, file, cb) => {
+      cb(null, !!extMap[file.mimetype]);
+    };
+  
+    return multer({ storage, fileFilter});
+  }
+})();
+
+export const toArray = target => Array.isArray(target) ? target : [target]

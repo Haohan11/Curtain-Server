@@ -1,6 +1,13 @@
 import allValidator from "../model/validate/validator.js";
 
-import { goHash, getPage, not0Falsy2Undefined } from "../model/helper.js";
+import {
+  goHash,
+  getPage,
+  not0Falsy2Undefined,
+  createUploadImage,
+} from "../model/helper.js";
+
+const uploadStockImage = createUploadImage("stock");
 
 /*
   About regularController:
@@ -229,143 +236,153 @@ export const EnvironmentController = makeRegularController({
 });
 
 export const StockController = {
-  create: async (req, res) => {
-    const {
-      Stock,
-      Stock_Material,
-      Stock_Design,
-      Stock_Environment,
-      StockColor,
-      ColorName,
-      Stock_StockColor,
-      StockColor_ColorScheme,
-    } = req.app;
-    const { validateStock: validator } = allValidator;
+  create: [
+    uploadStockImage.array("colorImage[]"),
+    (req, res) => {
+      if (!req.files) return res.response(500);
+      res.response(200, req.files)
+    },
+    async (req, res) => {
+      const {
+        Stock,
+        Stock_Material,
+        Stock_Design,
+        Stock_Environment,
+        StockColor,
+        ColorName,
+        Stock_StockColor,
+        StockColor_ColorScheme,
+      } = req.app;
+      const { validateStock: validator } = allValidator;
 
-    const validatedData = await validator({
-      ...req.body,
-      series_id: req.body.series,
-      supplier_id: not0Falsy2Undefined(req.body.supplier),
-    });
+      const validatedData = await validator({
+        ...req.body,
+        series_id: req.body.series,
+        supplier_id: not0Falsy2Undefined(req.body.supplier),
+      });
 
-    if (validatedData === false) return res.response(400, "Invalid format.");
-    // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
+      if (validatedData === false) return res.response(400, "Invalid format.");
+      // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
 
-    const result = {
-      message: "Success inserted",
-      data: {}
-    }
+      const result = {
+        message: "Success inserted",
+        data: {},
+      };
 
-    try {
-      const stock = await Stock.create(validatedData);
+      try {
+        const stock = await Stock.create(validatedData);
 
-      // save material design and environment
-      await Promise.all(
-        Object.entries({
-          material: Stock_Material,
-          design: Stock_Design,
-          environment: Stock_Environment,
-        }).map(async ([modelName, Model]) => {
-          const insert_data =
-            Array.isArray(req.body[modelName]) &&
-            req.body[modelName].reduce(
-              (list, id) =>
-                not0Falsy2Undefined(id) === undefined
-                  ? list
-                  : [
-                      ...list,
-                      {
-                        ...req.body._author,
-                        stock_id: stock.id,
-                        [`${modelName}_id`]: +not0Falsy2Undefined(id),
-                      },
-                    ],
-              []
-            );
+        // save material design and environment
+        await Promise.all(
+          Object.entries({
+            material: Stock_Material,
+            design: Stock_Design,
+            environment: Stock_Environment,
+          }).map(async ([modelName, Model]) => {
+            const insert_data =
+              Array.isArray(req.body[modelName]) &&
+              req.body[modelName].reduce(
+                (list, id) =>
+                  not0Falsy2Undefined(id) === undefined
+                    ? list
+                    : [
+                        ...list,
+                        {
+                          ...req.body._author,
+                          stock_id: stock.id,
+                          [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                        },
+                      ],
+                []
+              );
 
-          if (!insert_data) return;
+            if (!insert_data) return;
 
-          Model.removeAttribute("id");
-          await Model.bulkCreate(insert_data);
+            Model.removeAttribute("id");
+            await Model.bulkCreate(insert_data);
 
-          result.message += ` "${modelName}",`
-        })
-      );
-
-      // loop req.body for color_index and colorScheme_index
-      const colorData = Object.entries(req.body).reduce(
-        (list, [key, value]) => {
-          const [target, _index] = key.split("_");
-          const index = parseInt(_index);
-          if ((target !== "color" && target !== "colorScheme") || isNaN(index))
-            return list;
-
-          if (target === "color" && isNaN(parseInt(value))) return list;
-
-          list[index] = {
-            ...list[index],
-            [target]: value,
-          };
-
-          return list;
-        },
-        []
-      );
-
-      // save color data
-      await Promise.all(
-        colorData.map(async ({ color, colorScheme }, index) => {
-          if ((color !== 0 && !color) || !colorScheme)
-            return console.warn(
-              `Invalid ${!colorScheme ? "colorScheme" : "color"}_${index}.`
-            );
-
-          const { name } = await ColorName.findByPk(color);
-          if (!name) return;
-
-          const { id: stock_color_id } = await StockColor.create({
-            ...req.body._author,
-            stock_id: stock.id,
-            name,
-            color_name_id: color,
-          });
-          result.message += " stock_color,"
-
-          Stock_StockColor.removeAttribute("id");
-          await Stock_StockColor.create({
-            ...req.body._author,
-            stock_id: stock.id,
-            stock_color_id,
+            result.message += ` "${modelName}",`;
           })
-          result.message += " stock_stockcolor,"
+        );
 
-          const insert_data = colorScheme.reduce((list, scheme) => {
-            const schemeId = parseInt(scheme);
-            return isNaN(schemeId)
-              ? list
-              : [
-                  ...list,
-                  {
-                    ...req.body._author,
-                    color_scheme_id: schemeId,
-                    stock_color_id,
-                  },
-                ];
-          }, []);
+        // loop req.body for color_index and colorScheme_index
+        const colorData = Object.entries(req.body).reduce(
+          (list, [key, value]) => {
+            const [target, _index] = key.split("_");
+            const index = parseInt(_index);
+            if (
+              (target !== "color" && target !== "colorScheme") ||
+              isNaN(index)
+            )
+              return list;
 
-          StockColor_ColorScheme.removeAttribute("id");
-          await StockColor_ColorScheme.bulkCreate(insert_data);
-          result.message += " stockcolor_colorscheme,"
-        })
-      );
+            if (target === "color" && isNaN(parseInt(value))) return list;
 
-      res.response(200, result.message);
-    } catch (error) {
-      // log sql message with error.original.sqlMessage
-      console.log(error);
-      res.response(500, `Internal server error and ${result.message}.`);
-    }
-  },
+            list[index] = {
+              ...list[index],
+              [target]: value,
+            };
+
+            return list;
+          },
+          []
+        );
+
+        // save color data
+        await Promise.all(
+          colorData.map(async ({ color, colorScheme }, index) => {
+            if ((color !== 0 && !color) || !colorScheme)
+              return console.warn(
+                `Invalid ${!colorScheme ? "colorScheme" : "color"}_${index}.`
+              );
+
+            const { name } = await ColorName.findByPk(color);
+            if (!name) return;
+
+            const { id: stock_color_id } = await StockColor.create({
+              ...req.body._author,
+              stock_id: stock.id,
+              name,
+              color_name_id: color,
+            });
+            result.message += " stock_color,";
+
+            Stock_StockColor.removeAttribute("id");
+            await Stock_StockColor.create({
+              ...req.body._author,
+              stock_id: stock.id,
+              stock_color_id,
+            });
+            result.message += " stock_stockcolor,";
+
+            const insert_data = colorScheme.reduce((list, scheme) => {
+              const schemeId = parseInt(scheme);
+              return isNaN(schemeId)
+                ? list
+                : [
+                    ...list,
+                    {
+                      ...req.body._author,
+                      color_scheme_id: schemeId,
+                      stock_color_id,
+                    },
+                  ];
+            }, []);
+
+            StockColor_ColorScheme.removeAttribute("id");
+            await StockColor_ColorScheme.bulkCreate(insert_data);
+            result.message += " stockcolor_colorscheme,";
+          })
+        );
+
+        res.response(200, result.message);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500, `Internal server error and ${result.message}.`);
+      }
+    },
+  ],
   read: async (req, res) => {
     // const tableConnection = req.app[tableName];
     // const { queryAttribute = [] } = read;

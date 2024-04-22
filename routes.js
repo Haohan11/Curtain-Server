@@ -3,6 +3,7 @@ import express from "express";
 import { allConnectMiddleware } from "./middleware/connectToTable.js";
 import addAuthor from "./middleware/addAuthor.js";
 
+import { toArray } from "./model/helper.js";
 import * as AllController from "./controller/controller.js";
 
 const tablesDependencies = {
@@ -40,7 +41,16 @@ const tablesDependencies = {
   },
   Stock: {
     tableName: "Stock",
-    connectMiddlewares: ["Stock", "Stock_Material", "Stock_Design", "Stock_Environment", "StockColor","Stock_StockColor", "StockColor_ColorScheme", "ColorName"],
+    connectMiddlewares: [
+      "Stock",
+      "Stock_Material",
+      "Stock_Design",
+      "Stock_Environment",
+      "StockColor",
+      "Stock_StockColor",
+      "StockColor_ColorScheme",
+      "ColorName",
+    ],
   },
 };
 
@@ -63,9 +73,9 @@ const Routers = Object.entries(tablesDependencies).reduce(
 
     router.use(addAuthor);
 
-    router.get("/", controller.read);
-    router.post("/", controller.create);
-    router.put("/", controller.update);
+    router.post("/", ...toArray(controller.create));
+    router.get("/", ...toArray(controller.read));
+    router.put("/", ...toArray(controller.update));
 
     dict[`${tableName}Router`] = router;
     return dict;

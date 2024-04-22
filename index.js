@@ -26,7 +26,6 @@ app.use(cors());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(multer().array());
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
