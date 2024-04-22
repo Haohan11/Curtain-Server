@@ -261,6 +261,18 @@ export const StockColorSchema = {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    stock_image: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
+    color_image: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
+    removal_image: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
   },
   option: {
     tableName: "stock_color",

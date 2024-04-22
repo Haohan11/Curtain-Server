@@ -241,7 +241,7 @@ export const StockController = {
     (req, res, next) => {
       // if (!req.files) return res.response(500);
       // res.response(200, { body: req.body, files: req.files });
-      next()
+      next();
     },
     async (req, res) => {
       const {
@@ -265,47 +265,15 @@ export const StockController = {
       if (validatedData === false) return res.response(400, "Invalid format.");
       // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
 
+      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const author = { create_name, create_id, modify_name, modify_id };
+
       const result = {
         message: "Success inserted",
         data: {},
       };
 
       try {
-        const stock = await Stock.create(validatedData);
-
-        // save material design and environment
-        false && await Promise.all(
-          Object.entries({
-            material: Stock_Material,
-            design: Stock_Design,
-            environment: Stock_Environment,
-          }).map(async ([modelName, Model]) => {
-            const insert_data =
-              Array.isArray(req.body[modelName]) &&
-              req.body[modelName].reduce(
-                (list, id) =>
-                  not0Falsy2Undefined(id) === undefined
-                    ? list
-                    : [
-                        ...list,
-                        {
-                          ...req.body._author,
-                          stock_id: stock.id,
-                          [`${modelName}_id`]: +not0Falsy2Undefined(id),
-                        },
-                      ],
-                []
-              );
-
-            if (!insert_data) return;
-
-            Model.removeAttribute("id");
-            await Model.bulkCreate(insert_data);
-
-            result.message += ` "${modelName}",`;
-          })
-        );
-
         // loop req.body for color_index and colorScheme_index
         const colorData = Object.entries(req.body)
           .reduce((list, [key, value]) => {
@@ -328,8 +296,43 @@ export const StockController = {
           }, [])
           .filter(Boolean);
 
-        return res.response(200, {equal: colorData.length * 3 === req.files})
-        // if(colorData.length !== req.files) return res.response(400)
+        if (colorData.length * 3 !== req.files.length) return res.response(400);
+
+        const stock = await Stock.create(validatedData);
+
+        // save material design and environment
+        false &&
+          (await Promise.all(
+            Object.entries({
+              material: Stock_Material,
+              design: Stock_Design,
+              environment: Stock_Environment,
+            }).map(async ([modelName, Model]) => {
+              const insert_data =
+                Array.isArray(req.body[modelName]) &&
+                req.body[modelName].reduce(
+                  (list, id) =>
+                    not0Falsy2Undefined(id) === undefined
+                      ? list
+                      : [
+                          ...list,
+                          {
+                            ...author,
+                            stock_id: stock.id,
+                            [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                          },
+                        ],
+                  []
+                );
+
+              if (!insert_data) return;
+
+              Model.removeAttribute("id");
+              await Model.bulkCreate(insert_data);
+
+              result.message += ` "${modelName}",`;
+            })
+          ));
 
         // save color data
         await Promise.all(
@@ -343,16 +346,19 @@ export const StockController = {
             if (!name) return;
 
             const { id: stock_color_id } = await StockColor.create({
-              ...req.body._author,
+              ...author,
               stock_id: stock.id,
               name,
               color_name_id: color,
+              stock_image: req.files[index * 3].filename,
+              color_image: req.files[index * 3 + 1].filename,
+              removal_image: req.files[index * 3 + 2].filename,
             });
             result.message += " stock_color,";
 
             Stock_StockColor.removeAttribute("id");
             await Stock_StockColor.create({
-              ...req.body._author,
+              ...author,
               stock_id: stock.id,
               stock_color_id,
             });
@@ -365,7 +371,7 @@ export const StockController = {
                 : [
                     ...list,
                     {
-                      ...req.body._author,
+                      ...author,
                       color_scheme_id: schemeId,
                       stock_color_id,
                     },
