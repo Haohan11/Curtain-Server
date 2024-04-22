@@ -159,21 +159,24 @@ export const createUploadImage = (() => {
   return (destination) => {
     const storage = multer.diskStorage({
       destination: (req, file, cb) => {
-        console.log("========================================================")
         cb(null, `storage/app/public/${destination}`);
       },
       filename: (req, file, cb) => {
         const ext = extMap[file.mimetype];
+        file.originalname = Buffer.from(
+          file.originalname,
+          "binary"
+        ).toString();
         cb(null, crypto.randomUUID() + ext);
       },
     });
-  
+
     const fileFilter = (req, file, cb) => {
       cb(null, !!extMap[file.mimetype]);
     };
-  
-    return multer({ storage, fileFilter});
-  }
+
+    return multer({ storage, fileFilter });
+  };
 })();
 
-export const toArray = target => Array.isArray(target) ? target : [target]
+export const toArray = (target) => (Array.isArray(target) ? target : [target]);

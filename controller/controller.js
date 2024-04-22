@@ -237,7 +237,7 @@ export const EnvironmentController = makeRegularController({
 
 export const StockController = {
   create: [
-    uploadStockImage.array("colorImage[]"),
+    uploadStockImage.array("colorImages"),
     (req, res) => {
       if (!req.files) return res.response(500);
       res.response(200, req.files)
