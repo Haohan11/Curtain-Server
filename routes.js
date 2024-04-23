@@ -52,6 +52,9 @@ const tablesDependencies = {
       "ColorScheme",
       "Series",
       "Supplier",
+      "Material",
+      "Design",
+      "Environment",
     ],
   },
 };

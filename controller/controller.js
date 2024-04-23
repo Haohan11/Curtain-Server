@@ -402,6 +402,12 @@ export const StockController = {
       ColorScheme,
       Series,
       Supplier,
+      Material,
+      Design,
+      Environment,
+      Stock_Material,
+      Stock_Design,
+      Stock_Environment,
     } = req.app;
 
     try {
@@ -429,9 +435,36 @@ export const StockController = {
         raw: true,
       });
 
+      const MDEdict = {
+        material: [Material, Stock_Material],
+        design: [Design, Stock_Design],
+        environment: [Environment, Stock_Environment],
+      };
+
       const list = await Promise.all(
         stockList.map(async (stockData) => {
           const { id, series_id, supplier_id } = stockData;
+
+          // get material, design, environment data
+          await Promise.all(
+            Object.entries(MDEdict).map(async ([name, models]) => {
+              const idList = await models[1].findAll({
+                where: {
+                  stock_id: id,
+                },
+                attributes: [`${name}_id`],
+                raw: true,
+              });
+
+              stockData[name] = await models[0].findAll({
+                where: {
+                  id: idList.map((item) => item[`${name}_id`]),
+                },
+                attributes: ["name", "id", "enable"],
+                raw: true,
+              });
+            })
+          );
 
           stockData.series = await Series.findByPk(series_id);
           stockData.supplier = await Supplier.findByPk(supplier_id);
@@ -452,7 +485,7 @@ export const StockController = {
             raw: true,
           });
 
-          const colorSchemeSet = new Map()
+          const colorSchemeSet = new Map();
           stockData.colorList = await Promise.all(
             colorList.map(async (colorData) => {
               const { id } = colorData;
@@ -475,8 +508,8 @@ export const StockController = {
                     attributes: ["id", "enable", "name"],
                     raw: true,
                   });
-                  colorSchemeSet.set(scheme.id, scheme)
-                  return scheme
+                  colorSchemeSet.set(scheme.id, scheme);
+                  return scheme;
                 })
               );
 
@@ -484,7 +517,7 @@ export const StockController = {
             })
           );
 
-          stockData.colorScheme = [...colorSchemeSet.values()]
+          stockData.colorScheme = [...colorSchemeSet.values()];
 
           return stockData;
         })
