@@ -239,11 +239,6 @@ export const EnvironmentController = makeRegularController({
 export const StockController = {
   create: [
     uploadStockImage.array("colorImages"),
-    (req, res, next) => {
-      // if (!req.files) return res.response(500);
-      // res.response(200, { body: req.body, files: req.files });
-      next();
-    },
     async (req, res) => {
       const {
         Stock,
@@ -264,7 +259,6 @@ export const StockController = {
       });
 
       if (validatedData === false) return res.response(400, "Invalid format.");
-      // return res.response(200, "Success receive data.", {...req.body, validate: validatedData !== false});
 
       const { create_name, create_id, modify_name, modify_id } = req.body;
       const author = { create_name, create_id, modify_name, modify_id };
@@ -275,7 +269,17 @@ export const StockController = {
       };
 
       try {
-        // loop req.body for color_index and colorScheme_index
+        /*  
+          req.body may contain color data like: 
+          { 
+            color_0: id, 
+            color_1: id, ...,
+            colorScheme_0: [...],  
+            colorScheme_1: [...], ..., 
+          }
+          Loop req.body for wrap color_index and colorScheme_index to 
+          object in array like: [{ color: id, colorScheme: []}, ...] 
+        */
         const colorData = Object.entries(req.body)
           .reduce((list, [key, value]) => {
             const [target, _index] = key.split("_");
@@ -299,9 +303,10 @@ export const StockController = {
 
         if (colorData.length * 3 !== req.files.length) return res.response(400);
 
+        // only color data is validate then we create stock
         const stock = await Stock.create(validatedData);
 
-        // save material design and environment
+        // save material, design, environment
         await Promise.all(
           Object.entries({
             material: Stock_Material,
@@ -359,14 +364,6 @@ export const StockController = {
             });
             result.message += " stock_color,";
 
-            Stock_StockColor.removeAttribute("id");
-            await Stock_StockColor.create({
-              ...author,
-              stock_id: stock.id,
-              stock_color_id,
-            });
-            result.message += " stock_stockcolor,";
-
             const insert_data = colorScheme.reduce((list, scheme) => {
               const schemeId = parseInt(scheme);
               return isNaN(schemeId)
@@ -381,8 +378,10 @@ export const StockController = {
                   ];
             }, []);
 
+            // junction table has no id column
             StockColor_ColorScheme.removeAttribute("id");
             await StockColor_ColorScheme.bulkCreate(insert_data);
+
             result.message += " stockcolor_colorscheme,";
           })
         );
@@ -396,17 +395,83 @@ export const StockController = {
     },
   ],
   read: async (req, res) => {
-    // const tableConnection = req.app[tableName];
-    // const { queryAttribute = [] } = read;
+    const { Stock, StockColor, StockColor_ColorScheme, ColorScheme } = req.app;
 
     try {
-      const total = 0;
+      const total = await Stock.count();
       const { start, size, begin, totalPages } = getPage({
         ...req.query,
         total,
       });
 
-      const list = [];
+      const stockList = await Stock.findAll({
+        offset: begin,
+        limit: size,
+        attributes: [
+          "id",
+          "enable",
+          "name",
+          "series_id",
+          "supplier_id",
+          "block",
+          "absorption",
+          "description",
+        ],
+      });
+
+      const list = await Promise.all(
+        stockList.map(async ({ dataValues: stockData }) => {
+          const { id } = stockData;
+          console.log("id:", id);
+
+          const colorList = await StockColor.findAll({
+            where: { stock_id: id },
+            attributes: [
+              "id",
+              "name",
+              "color_name_id",
+              "stock_image",
+              "stock_image_name",
+              "color_image",
+              "color_image_name",
+              "removal_image",
+              "removal_image_name",
+            ],
+          });
+
+          const colorAppendSchemeList = await Promise.all(
+            colorList.map(async ({ dataValues: colorData }) => {
+              const { id } = colorData;
+              const colorSchemeIdList = await StockColor_ColorScheme.findAll({
+                where: {
+                  stock_color_id: id,
+                },
+                attributes: ["color_scheme_id"],
+              });
+
+              const colorSchemeList = await Promise.all(
+                colorSchemeIdList.map(
+                  async ({ dataValues: { color_scheme_id } }) =>
+                    (await ColorScheme.findAll({
+                        where: {
+                          id: color_scheme_id,
+                        },
+                        attributes: ["id", "enable", "name"],
+                      })
+                    ).map((scheme) => scheme.dataValues)
+                )
+              );
+
+              return {
+                ...colorData,
+                colorSchemeList,
+              };
+            })
+          );
+
+          return { ...stockData, colorList: colorAppendSchemeList };
+        })
+      );
 
       return res.response(200, {
         start,
@@ -422,5 +487,7 @@ export const StockController = {
       res.response(500);
     }
   },
-  update: async (req, res) => {},
+  update: async (req, res) => {
+    res.response(400, "Currently cannot update data.");
+  },
 };

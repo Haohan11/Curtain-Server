@@ -215,14 +215,6 @@ export const StockSchema = {
   ],
   belongsToMany: [
     {
-      targetTable: "StockColor",
-      option: {
-        through: "Stock_StockColor",
-        foreignKey: "stock_id",
-        otherKey: "stock_color_id",
-      },
-    },
-    {
       targetTable: "Material",
       option: {
         through: "Stock_Material",
@@ -318,39 +310,7 @@ export const StockColorSchema = {
         otherKey: "color_scheme_id",
       },
     },
-    {
-      targetTable: "Stock",
-      option: {
-        through: "Stock_StockColor",
-        foreignKey: "stock_color_id",
-        otherKey: "stock_id",
-      },
-    },
   ],
-};
-
-export const StockImageSchema = {
-  name: "stock_image",
-  cols: {
-    // -&achor-p-img
-    name: {
-      type: DataTypes.CHAR(15),
-      allowNull: false,
-    },
-    // -&achor-p-img
-    stock_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    // -&achor-p-img
-    path: {
-      type: DataTypes.STRING(2048),
-      allowNull: false,
-    },
-  },
-  option: {
-    tableName: "stock_image",
-  },
 };
 
 export const ColorNameSchema = {
@@ -578,47 +538,6 @@ export const StockColor_ColorSchemeSchema = {
           name: "color_scheme_id",
           type: DataTypes.INTEGER,
           allowNull: false,
-        },
-      },
-    },
-  ],
-};
-
-export const Stock_StockColorSchema = {
-  name: "stock_stockColor",
-  cols: {
-    stock_id: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: "stock",
-        key: "id",
-      },
-    },
-    stock_color_id: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: "stock_color",
-        key: "id",
-      },
-    },
-  },
-  option: {
-    tableName: "stock_stockColor",
-  },
-  belongsTo: [
-    {
-      targetTable: "Stock",
-      option: {
-        foreignKey: {
-          name: "stock_id",
-        },
-      },
-    },
-    {
-      targetTable: "StockColor",
-      option: {
-        foreignKey: {
-          name: "stock_color_id",
         },
       },
     },
