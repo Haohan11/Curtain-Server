@@ -247,9 +247,9 @@ export const StockController = {
         Stock_Environment,
         StockColor,
         ColorName,
-        Stock_StockColor,
         StockColor_ColorScheme,
       } = req.app;
+
       const { validateStock: validator } = allValidator;
 
       const validatedData = await validator({
@@ -417,12 +417,12 @@ export const StockController = {
           "absorption",
           "description",
         ],
+        raw: true,
       });
 
       const list = await Promise.all(
-        stockList.map(async ({ dataValues: stockData }) => {
+        stockList.map(async (stockData) => {
           const { id } = stockData;
-          console.log("id:", id);
 
           const colorList = await StockColor.findAll({
             where: { stock_id: id },
@@ -437,39 +437,40 @@ export const StockController = {
               "removal_image",
               "removal_image_name",
             ],
+            raw: true,
           });
 
-          const colorAppendSchemeList = await Promise.all(
-            colorList.map(async ({ dataValues: colorData }) => {
+          stockData.colorList = await Promise.all(
+            colorList.map(async (colorData) => {
               const { id } = colorData;
+
+              // will give array like: [{color_scheme_id: id}, {color_scheme_id: id}, ...]
               const colorSchemeIdList = await StockColor_ColorScheme.findAll({
                 where: {
                   stock_color_id: id,
                 },
                 attributes: ["color_scheme_id"],
+                raw: true,
               });
 
-              const colorSchemeList = await Promise.all(
+              colorData.colorSchemeList = await Promise.all(
                 colorSchemeIdList.map(
-                  async ({ dataValues: { color_scheme_id } }) =>
-                    (await ColorScheme.findAll({
-                        where: {
-                          id: color_scheme_id,
-                        },
-                        attributes: ["id", "enable", "name"],
-                      })
-                    ).map((scheme) => scheme.dataValues)
+                  async ({ color_scheme_id }) =>
+                    await ColorScheme.findAll({
+                      where: {
+                        id: color_scheme_id,
+                      },
+                      attributes: ["id", "enable", "name"],
+                      raw: true,
+                    })
                 )
               );
 
-              return {
-                ...colorData,
-                colorSchemeList,
-              };
+              return colorData;
             })
           );
 
-          return { ...stockData, colorList: colorAppendSchemeList };
+          return stockData;
         })
       );
 

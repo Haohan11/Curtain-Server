@@ -47,7 +47,6 @@ const tablesDependencies = {
       "Stock_Design",
       "Stock_Environment",
       "StockColor",
-      "Stock_StockColor",
       "StockColor_ColorScheme",
       "ColorName",
       "ColorScheme",
