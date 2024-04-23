@@ -265,11 +265,23 @@ export const StockColorSchema = {
       type: DataTypes.STRING(2048),
       allowNull: false,
     },
+    stock_image_name: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
     color_image: {
       type: DataTypes.STRING(2048),
       allowNull: false,
     },
+    color_image_name: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
     removal_image: {
+      type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
+    removal_image_name: {
       type: DataTypes.STRING(2048),
       allowNull: false,
     },

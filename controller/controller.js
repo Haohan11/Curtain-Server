@@ -5,6 +5,7 @@ import {
   getPage,
   not0Falsy2Undefined,
   createUploadImage,
+  toArray,
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -289,7 +290,7 @@ export const StockController = {
 
             list[index] = {
               ...list[index],
-              [target]: value,
+              [target]: target === "color" ? value : toArray(value),
             };
 
             return list;
@@ -301,38 +302,37 @@ export const StockController = {
         const stock = await Stock.create(validatedData);
 
         // save material design and environment
-        false &&
-          (await Promise.all(
-            Object.entries({
-              material: Stock_Material,
-              design: Stock_Design,
-              environment: Stock_Environment,
-            }).map(async ([modelName, Model]) => {
-              const insert_data =
-                Array.isArray(req.body[modelName]) &&
-                req.body[modelName].reduce(
-                  (list, id) =>
-                    not0Falsy2Undefined(id) === undefined
-                      ? list
-                      : [
-                          ...list,
-                          {
-                            ...author,
-                            stock_id: stock.id,
-                            [`${modelName}_id`]: +not0Falsy2Undefined(id),
-                          },
-                        ],
-                  []
-                );
+        await Promise.all(
+          Object.entries({
+            material: Stock_Material,
+            design: Stock_Design,
+            environment: Stock_Environment,
+          }).map(async ([modelName, Model]) => {
+            const insert_data =
+              req.body[modelName] &&
+              toArray(req.body[modelName]).reduce(
+                (list, id) =>
+                  not0Falsy2Undefined(id) === undefined
+                    ? list
+                    : [
+                        ...list,
+                        {
+                          ...author,
+                          stock_id: stock.id,
+                          [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                        },
+                      ],
+                []
+              );
 
-              if (!insert_data) return;
+            if (!insert_data) return;
 
-              Model.removeAttribute("id");
-              await Model.bulkCreate(insert_data);
+            Model.removeAttribute("id");
+            await Model.bulkCreate(insert_data);
 
-              result.message += ` "${modelName}",`;
-            })
-          ));
+            result.message += ` "${modelName}",`;
+          })
+        );
 
         // save color data
         await Promise.all(
@@ -350,9 +350,12 @@ export const StockController = {
               stock_id: stock.id,
               name,
               color_name_id: color,
-              stock_image: req.files[index * 3].filename,
-              color_image: req.files[index * 3 + 1].filename,
-              removal_image: req.files[index * 3 + 2].filename,
+              stock_image_name: req.files[index * 3].originalname,
+              stock_image: req.files[index * 3].path,
+              color_image_name: req.files[index * 3 + 1].originalname,
+              color_image: req.files[index * 3 + 1].path,
+              removal_image_name: req.files[index * 3 + 2].originalname,
+              removal_image: req.files[index * 3 + 2].path,
             });
             result.message += " stock_color,";
 
@@ -384,7 +387,7 @@ export const StockController = {
           })
         );
 
-        res.response(200, result.message);
+        res.response(200, result.message, req.body);
       } catch (error) {
         // log sql message with error.original.sqlMessage
         console.log(error);
