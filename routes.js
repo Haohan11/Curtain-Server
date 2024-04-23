@@ -50,6 +50,8 @@ const tablesDependencies = {
       "StockColor_ColorScheme",
       "ColorName",
       "ColorScheme",
+      "Series",
+      "Supplier",
     ],
   },
 };

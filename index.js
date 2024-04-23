@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import multer from "multer";
 
 import { Routers } from "./routes.js";
 
@@ -19,6 +18,7 @@ const {
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
 import responseMiddleware from "./middleware/responseMiddleware.js";
 import notFoundResponse from "./middleware/404reponse.js";
+import establishAssociation from "./middleware/establishAssociation.js";
 
 const app = express();
 
@@ -32,6 +32,8 @@ app.use(responseMiddleware);
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
+
+app.use(establishAssociation);
 
 app.use("/employee", EmployeeRouter);
 app.use("/series", SeriesRouter);
