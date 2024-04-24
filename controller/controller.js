@@ -6,6 +6,7 @@ import {
   not0Falsy2Undefined,
   createUploadImage,
   toArray,
+  transFilePath
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -356,11 +357,11 @@ export const StockController = {
               name,
               color_name_id: color,
               stock_image_name: req.files[index * 3].originalname,
-              stock_image: req.files[index * 3].path,
+              stock_image: transFilePath(req.files[index * 3]),
               color_image_name: req.files[index * 3 + 1].originalname,
-              color_image: req.files[index * 3 + 1].path,
+              color_image: transFilePath(req.files[index * 3 + 1]),
               removal_image_name: req.files[index * 3 + 2].originalname,
-              removal_image: req.files[index * 3 + 2].path,
+              removal_image: transFilePath(req.files[index * 3 + 2]),
             });
             result.message += " stock_color,";
 
@@ -538,6 +539,6 @@ export const StockController = {
     }
   },
   update: async (req, res) => {
-    res.response(400, "Currently cannot update data.");
+    res.response(200, req.body);
   },
 };

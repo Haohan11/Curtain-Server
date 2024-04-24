@@ -19,10 +19,13 @@ import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
 import responseMiddleware from "./middleware/responseMiddleware.js";
 import notFoundResponse from "./middleware/404reponse.js";
 import establishAssociation from "./middleware/establishAssociation.js";
+import staticPathName from "./model/staticPathName.js";
 
 const app = express();
 
 app.use(cors());
+
+app.use(express.static(staticPathName));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

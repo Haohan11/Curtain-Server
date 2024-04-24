@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import crypto from "crypto";
 
+import staticPathName from "../model/staticPathName.js";
+
 export const goHash = (() => {
   const saltRound = 10;
 
@@ -178,5 +180,9 @@ export const createUploadImage = (() => {
     return multer({ storage, fileFilter });
   };
 })();
+
+export const transFilePath = (path) => {
+  return path.replace(staticPathName, "")
+}
 
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
