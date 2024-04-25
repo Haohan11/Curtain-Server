@@ -6,7 +6,7 @@ import {
   not0Falsy2Undefined,
   createUploadImage,
   toArray,
-  transFilePath
+  transFilePath,
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -357,11 +357,11 @@ export const StockController = {
               name,
               color_name_id: color,
               stock_image_name: req.files[index * 3].originalname,
-              stock_image: transFilePath(req.files[index * 3]),
+              stock_image: transFilePath(req.files[index * 3].path),
               color_image_name: req.files[index * 3 + 1].originalname,
-              color_image: transFilePath(req.files[index * 3 + 1]),
+              color_image: transFilePath(req.files[index * 3 + 1].path),
               removal_image_name: req.files[index * 3 + 2].originalname,
-              removal_image: transFilePath(req.files[index * 3 + 2]),
+              removal_image: transFilePath(req.files[index * 3 + 2].path),
             });
             result.message += " stock_color,";
 
@@ -538,7 +538,89 @@ export const StockController = {
       res.response(500);
     }
   },
-  update: async (req, res) => {
-    res.response(200, req.body);
-  },
+  update: [
+    uploadStockImage.any(),
+    (req, res, next) => {
+      req.files = req.files.reduce((dict, fileData) => ({
+        ...dict,
+        [fileData.fieldname]: {...fileData}
+      }), {})
+      next()
+    },
+    async (req, res) => {
+      const {
+        Stock,
+        Stock_Material,
+        Stock_Design,
+        Stock_Environment,
+        StockColor,
+        ColorName,
+        StockColor_ColorScheme,
+      } = req.app;
+
+      const { validateStock: validator } = allValidator;
+
+      const validatedData = await validator({
+        ...req.body,
+        series_id: req.body.series,
+        supplier_id: not0Falsy2Undefined(req.body.supplier),
+      });
+
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { id } = req.body;
+      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+
+      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const author = { create_name, create_id, modify_name, modify_id };
+
+      try {
+        await Stock.update(validatedData, {
+          where: { id },
+        });
+
+        const bulkData = await toArray(req.body.colorList).reduce(
+          async (dict, rawData) => {
+            const color = JSON.parse(rawData);
+            const { id, color_name_id, code, description } = color;
+            const { name } = await ColorName.findByPk(color_name_id);
+            if (!name) return dict;
+
+            return [...dict, {
+              ...(id >= 0 ? { id } : {}),
+              color_name_id,
+              name,
+              code,
+              description,
+              ...author,
+              ...(["stock", "color", "removal"].reduce(
+                (imageDict, name, index) => {
+                  if (!req.files[`colorImages_${id}_${index}`]) return imageDict;
+                  return {
+                    ...imageDict,
+                    [`${name}_image_name`]:
+                      req.files[`colorImages_${id}_${index}`].originalname,
+                    [`${name}_image`]: transFilePath(
+                      req.files[`colorImages_${id}_${index}`].path
+                    ),
+                  };
+                },
+                {}
+              )),
+            }];
+          },
+          []
+        );
+
+        // await StockColor.bulkCreate(bulkData, { updateOnDuplicate: ["id"]})
+        // StockColor.findAll({});
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500, `Internal server error and ${result.message}.`);
+      }
+
+      res.response(200, req.body);
+    },
+  ],
 };
