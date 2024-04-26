@@ -1,5 +1,6 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
+import fs from "fs";
 import { Op } from "sequelize";
 
 import {
@@ -9,6 +10,7 @@ import {
   createUploadImage,
   toArray,
   transFilePath,
+  filePathAppend,
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -457,8 +459,8 @@ export const StockController = {
       const list = await Promise.all(
         stockList.map(async (stockData) => {
           const { id, series_id, supplier_id, enable } = stockData;
-          // option raw will cause sequlize query give 0 or 1 
-          stockData.enable = !!enable
+          // option raw will cause sequlize query give 0 or 1
+          stockData.enable = !!enable;
 
           // get material, design, environment data
           await Promise.all(
@@ -591,91 +593,94 @@ export const StockController = {
       const { create_name, create_id, modify_name, modify_id } = req.body;
       const author = { create_name, create_id, modify_name, modify_id };
 
-      const result = { message: "Success updated: " };
+      const result = { message: "success updated: " };
       try {
         const preserveIds = [];
-        await Promise.all(
-          toArray(req.body.colorList).map(async (rawData) => {
-            const color = JSON.parse(rawData);
-            const { id: colorId, color_name_id, colorSchemes } = color;
-            const isNewColor = colorId < 0;
 
-            const { name } = await ColorName.findByPk(color_name_id);
-            if (!name) {
-              const wrongNameError = new Error("Invalid name id.");
-              wrongNameError.name = "wrongNameId";
-              throw wrongNameError;
-            }
+        req.body.colorList &&
+          (await Promise.all(
+            toArray(req.body.colorList).map(async (rawData) => {
+              const color = JSON.parse(rawData);
+              const { id: colorId, color_name_id, colorSchemes } = color;
+              const isNewColor = colorId < 0;
 
-            const newData = {
-              ...(isNewColor ? {} : { id: colorId }),
-              stock_id: stockId,
-              color_name_id,
-              name,
-              ...author,
-              ...["stock", "color", "removal"].reduce(
-                (imageDict, name, index) => {
-                  if (!req.files[`colorImages_${colorId}_${index}`]) {
-                    if (!isNewColor) return imageDict;
-                    const loseImageError = new Error(`Lose ${name} image.`);
-                    loseImageError.name = "ImageLose";
-                    throw loseImageError;
-                  }
-                  return {
-                    ...imageDict,
-                    [`${name}_image_name`]:
-                      req.files[`colorImages_${colorId}_${index}`].originalname,
-                    [`${name}_image`]: transFilePath(
-                      req.files[`colorImages_${colorId}_${index}`].path
-                    ),
-                  };
-                },
-                {}
-              ),
-            };
+              const { name } = await ColorName.findByPk(color_name_id);
+              if (!name) {
+                const wrongNameError = new Error("Invalid name id.");
+                wrongNameError.name = "wrongNameId";
+                throw wrongNameError;
+              }
 
-            const stock_color_id = await {
-              async true() {
-                const { id } = await StockColor.create(newData);
-                return id;
-              },
-              async false() {
-                await StockColor.update(newData, { where: { id: colorId } });
-                return colorId;
-              },
-            }[isNewColor.toString()]();
-            preserveIds.push(stock_color_id);
-
-            const insert_data = colorSchemes.reduce((list, scheme) => {
-              const schemeId = parseInt(scheme);
-              return isNaN(schemeId)
-                ? list
-                : [
-                    ...list,
-                    {
-                      ...author,
-                      color_scheme_id: schemeId,
-                      stock_color_id,
-                    },
-                  ];
-            }, []);
-
-            StockColor_ColorScheme.removeAttribute("id");
-            await StockColor_ColorScheme.bulkCreate(insert_data, {
-              updateOnDuplicate: Object.keys(author),
-            });
-            !isNewColor &&
-              (await StockColor_ColorScheme.destroy({
-                where: {
-                  stock_color_id,
-                  color_scheme_id: {
-                    [Op.notIn]: colorSchemes,
+              const newData = {
+                ...(isNewColor ? {} : { id: colorId }),
+                stock_id: stockId,
+                color_name_id,
+                name,
+                ...author,
+                ...["stock", "color", "removal"].reduce(
+                  (imageDict, name, index) => {
+                    if (!req.files[`colorImages_${colorId}_${index}`]) {
+                      if (!isNewColor) return imageDict;
+                      const loseImageError = new Error(`Lose ${name} image.`);
+                      loseImageError.name = "ImageLose";
+                      throw loseImageError;
+                    }
+                    return {
+                      ...imageDict,
+                      [`${name}_image_name`]:
+                        req.files[`colorImages_${colorId}_${index}`]
+                          .originalname,
+                      [`${name}_image`]: transFilePath(
+                        req.files[`colorImages_${colorId}_${index}`].path
+                      ),
+                    };
                   },
+                  {}
+                ),
+              };
+
+              const stock_color_id = await {
+                async true() {
+                  const { id } = await StockColor.create(newData);
+                  return id;
                 },
-              }));
-          })
-        );
-        result.message += "color schemes, "
+                async false() {
+                  await StockColor.update(newData, { where: { id: colorId } });
+                  return colorId;
+                },
+              }[isNewColor.toString()]();
+              preserveIds.push(stock_color_id);
+
+              const insert_data = colorSchemes.reduce((list, scheme) => {
+                const schemeId = parseInt(scheme);
+                return isNaN(schemeId)
+                  ? list
+                  : [
+                      ...list,
+                      {
+                        ...author,
+                        color_scheme_id: schemeId,
+                        stock_color_id,
+                      },
+                    ];
+              }, []);
+
+              StockColor_ColorScheme.removeAttribute("id");
+              await StockColor_ColorScheme.bulkCreate(insert_data, {
+                updateOnDuplicate: Object.keys(author),
+              });
+              !isNewColor &&
+                (await StockColor_ColorScheme.destroy({
+                  where: {
+                    stock_color_id,
+                    color_scheme_id: {
+                      [Op.notIn]: colorSchemes,
+                    },
+                  },
+                }));
+            })
+          ));
+        result.message += "color schemes, ";
 
         // save material, design, environment
         await Promise.all(
@@ -720,7 +725,31 @@ export const StockController = {
         await Stock.update(validatedData, {
           where: { id: stockId },
         });
-        result.message += "stock, "
+        result.message += "stock, ";
+
+        try {
+          const imagePath = await StockColor.findAll({
+            where: {
+              stock_id: stockId,
+              id: {
+                [Op.notIn]: preserveIds,
+              },
+            },
+            attributes: ["stock_image", "color_image", "removal_image"],
+          });
+
+          await Promise.all(
+            imagePath.map(async (item) => {
+              ["stock_image", "color_image", "removal_image"].map((name) => {
+                const path = filePathAppend(item[name]).replace(/\\/g, "/");
+                // fs.access(path);
+                fs.unlink(path);
+              });
+            })
+          );
+        } catch (error) {
+          console.warn(error);
+        }
 
         await StockColor.destroy({
           where: {
@@ -730,7 +759,7 @@ export const StockController = {
             },
           },
         });
-        result.message += "stock color."
+        result.message += "stock color.";
 
         res.response(200, result.message);
       } catch (error) {

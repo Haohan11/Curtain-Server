@@ -185,4 +185,6 @@ export const transFilePath = (path) => {
   return path.replace(staticPathName, "")
 }
 
+export const filePathAppend = (path) => `${staticPathName}/${path}`
+
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
