@@ -1,4 +1,6 @@
 import allValidator from "../model/validate/validator.js";
+import multer from "multer";
+import { Op } from "sequelize";
 
 import {
   goHash,
@@ -38,25 +40,29 @@ const makeRegularController = ({
 }) => {
   const validator = allValidator[`validate${tableName}`];
   return {
-    create: async (req, res) => {
-      const tableConnection = req.app[tableName];
-      const { handleData = (req, data) => data } = create;
+    create: [
+      multer().none(),
+      async (req, res) => {
+        const tableConnection = req.app[tableName];
+        const { handleData = (req, data) => data } = create;
 
-      const validatedData = await validator(req.body);
-      if (validatedData === false) return res.response(400, "Invalid format.");
+        const validatedData = await validator(req.body);
+        if (validatedData === false)
+          return res.response(400, "Invalid format.");
 
-      const data = await handleData(req, validatedData);
-      if (data === false) return res.response(500);
+        const data = await handleData(req, validatedData);
+        if (data === false) return res.response(500);
 
-      try {
-        await tableConnection.create(data);
-        res.response(200, `Success added ${tableName}`);
-      } catch (error) {
-        // log sql message with error.original.sqlMessage
-        console.log(error);
-        res.response(500);
-      }
-    },
+        try {
+          await tableConnection.create(data);
+          res.response(200, `Success added ${tableName}`);
+        } catch (error) {
+          // log sql message with error.original.sqlMessage
+          console.log(error);
+          res.response(500);
+        }
+      },
+    ],
     read: async (req, res) => {
       const tableConnection = req.app[tableName];
       const { queryAttribute = [] } = read;
@@ -88,33 +94,38 @@ const makeRegularController = ({
         res.response(500);
       }
     },
-    update: async (req, res) => {
-      const tableConnection = req.app[tableName];
-      const { handleData = (req, data) => data } = update;
+    update: [
+      multer().none(),
+      async (req, res) => {
+        const tableConnection = req.app[tableName];
+        const { handleData = (req, data) => data } = update;
 
-      // get id before check because checkdata will also remove data that is not in validate schema
-      const { id } = req.body;
-      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+        // get id before check because checkdata will also remove data that is not in validate schema
+        const { id } = req.body;
+        console.log("================", id);
+        if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
 
-      const validatedData = await validator(req.body);
-      if (validatedData === false) return res.response(400, "Invalid format.");
+        const validatedData = await validator(req.body);
+        if (validatedData === false)
+          return res.response(400, "Invalid format.");
 
-      const data = await handleData(req, validatedData);
-      if (data === false) return res.response(500);
+        const data = await handleData(req, validatedData);
+        if (data === false) return res.response(500);
 
-      try {
-        await tableConnection.update(data, {
-          where: {
-            id,
-          },
-        });
-        res.response(200, `Updated ${tableName} data success.`);
-      } catch (error) {
-        // log sql message with error.original.sqlMessage
-        console.log(error);
-        res.response(500);
-      }
-    },
+        try {
+          await tableConnection.update(data, {
+            where: {
+              id,
+            },
+          });
+          res.response(200, `Updated ${tableName} data success.`);
+        } catch (error) {
+          // log sql message with error.original.sqlMessage
+          console.log(error);
+          res.response(500);
+        }
+      },
+    ],
   };
 };
 
@@ -365,6 +376,7 @@ export const StockController = {
             });
             result.message += " stock_color,";
 
+            // save colorScheme data
             const insert_data = colorScheme.reduce((list, scheme) => {
               const schemeId = parseInt(scheme);
               return isNaN(schemeId)
@@ -444,7 +456,9 @@ export const StockController = {
 
       const list = await Promise.all(
         stockList.map(async (stockData) => {
-          const { id, series_id, supplier_id } = stockData;
+          const { id, series_id, supplier_id, enable } = stockData;
+          // option raw will cause sequlize query give 0 or 1 
+          stockData.enable = !!enable
 
           // get material, design, environment data
           await Promise.all(
@@ -541,11 +555,14 @@ export const StockController = {
   update: [
     uploadStockImage.any(),
     (req, res, next) => {
-      req.files = req.files.reduce((dict, fileData) => ({
-        ...dict,
-        [fileData.fieldname]: {...fileData}
-      }), {})
-      next()
+      req.files = req.files.reduce(
+        (dict, fileData) => ({
+          ...dict,
+          [fileData.fieldname]: { ...fileData },
+        }),
+        {}
+      );
+      next();
     },
     async (req, res) => {
       const {
@@ -563,64 +580,164 @@ export const StockController = {
       const validatedData = await validator({
         ...req.body,
         series_id: req.body.series,
-        supplier_id: not0Falsy2Undefined(req.body.supplier),
+        supplier_id: not0Falsy2Undefined(JSON.parse(req.body.supplier)),
       });
 
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      const { id } = req.body;
-      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+      const { id: stockId } = req.body;
+      if (isNaN(parseInt(stockId))) return res.response(400, "Invalid id.");
 
       const { create_name, create_id, modify_name, modify_id } = req.body;
       const author = { create_name, create_id, modify_name, modify_id };
 
+      const result = { message: "" };
       try {
-        await Stock.update(validatedData, {
-          where: { id },
-        });
-
-        const bulkData = await toArray(req.body.colorList).reduce(
-          async (dict, rawData) => {
+        // handle color data
+        const preserveIds = [];
+        await Promise.all(
+          toArray(req.body.colorList).map(async (rawData) => {
             const color = JSON.parse(rawData);
-            const { id, color_name_id, code, description } = color;
-            const { name } = await ColorName.findByPk(color_name_id);
-            if (!name) return dict;
+            const { id: colorId, color_name_id, colorSchemes } = color;
+            const isNewColor = colorId < 0;
 
-            return [...dict, {
-              ...(id >= 0 ? { id } : {}),
+            const { name } = await ColorName.findByPk(color_name_id);
+            if (!name) {
+              const wrongNameError = new Error("Invalid name id.");
+              wrongNameError.name = "wrongNameId";
+              throw wrongNameError;
+            }
+
+            const newData = {
+              ...(isNewColor ? {} : { id: colorId }),
+              stock_id: stockId,
               color_name_id,
               name,
-              code,
-              description,
               ...author,
-              ...(["stock", "color", "removal"].reduce(
+              ...["stock", "color", "removal"].reduce(
                 (imageDict, name, index) => {
-                  if (!req.files[`colorImages_${id}_${index}`]) return imageDict;
+                  if (!req.files[`colorImages_${colorId}_${index}`]) {
+                    if (!isNewColor) return imageDict;
+                    const loseImageError = new Error(`Lose ${name} image.`);
+                    loseImageError.name = "ImageLose";
+                    throw loseImageError;
+                  }
                   return {
                     ...imageDict,
                     [`${name}_image_name`]:
-                      req.files[`colorImages_${id}_${index}`].originalname,
+                      req.files[`colorImages_${colorId}_${index}`].originalname,
                     [`${name}_image`]: transFilePath(
-                      req.files[`colorImages_${id}_${index}`].path
+                      req.files[`colorImages_${colorId}_${index}`].path
                     ),
                   };
                 },
                 {}
-              )),
-            }];
-          },
-          []
+              ),
+            };
+
+            const stock_color_id = await {
+              async true() {
+                const { id } = await StockColor.create(newData);
+                return id;
+              },
+              async false() {
+                await StockColor.update(newData, { where: { id: colorId } });
+                return colorId;
+              },
+            }[isNewColor.toString()]();
+            preserveIds.push(stock_color_id);
+
+            const insert_data = colorSchemes.reduce((list, scheme) => {
+              const schemeId = parseInt(scheme);
+              return isNaN(schemeId)
+                ? list
+                : [
+                    ...list,
+                    {
+                      ...author,
+                      color_scheme_id: schemeId,
+                      stock_color_id,
+                    },
+                  ];
+            }, []);
+
+            StockColor_ColorScheme.removeAttribute("id");
+            await StockColor_ColorScheme.bulkCreate(insert_data, {
+              updateOnDuplicate: Object.keys(author),
+            });
+            !isNewColor &&
+              (await StockColor_ColorScheme.destroy({
+                where: {
+                  stock_color_id,
+                  color_scheme_id: {
+                    [Op.notIn]: colorSchemes,
+                  },
+                },
+              }));
+          })
         );
 
-        // await StockColor.bulkCreate(bulkData, { updateOnDuplicate: ["id"]})
-        // StockColor.findAll({});
+        // save material, design, environment
+        await Promise.all(
+          Object.entries({
+            material: Stock_Material,
+            design: Stock_Design,
+            environment: Stock_Environment,
+          }).map(async ([modelName, Model]) => {
+            const listData = req.body[modelName] ?? [];
+            const insert_data = toArray(listData).reduce(
+              (list, id) =>
+                not0Falsy2Undefined(id) === undefined
+                  ? list
+                  : [
+                      ...list,
+                      {
+                        ...author,
+                        stock_id: stockId,
+                        [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                      },
+                    ],
+              []
+            );
+
+            Model.removeAttribute("id");
+            await Model.bulkCreate(insert_data, {
+              updateOnDuplicate: Object.keys(author),
+            });
+
+            await Model.destroy({
+              where: {
+                stock_id: stockId,
+                [`${modelName}_id`]: {
+                  [Op.notIn]: toArray(listData),
+                },
+              },
+            });
+          })
+        );
+
+        await Stock.update(validatedData, {
+          where: { id: stockId },
+        });
+
+        await StockColor.destroy({
+          where: {
+            stock_id: stockId,
+            id: {
+              [Op.notIn]: preserveIds,
+            },
+          },
+        });
+
+        res.response(200, result.message);
       } catch (error) {
         // log sql message with error.original.sqlMessage
         console.log(error);
+        if (["ImageLose", "wrongNameId"].includes(error.name))
+          return res.response(400, error.message);
+
         res.response(500, `Internal server error and ${result.message}.`);
       }
-
-      res.response(200, req.body);
     },
   ],
 };
