@@ -591,9 +591,8 @@ export const StockController = {
       const { create_name, create_id, modify_name, modify_id } = req.body;
       const author = { create_name, create_id, modify_name, modify_id };
 
-      const result = { message: "" };
+      const result = { message: "Success updated: " };
       try {
-        // handle color data
         const preserveIds = [];
         await Promise.all(
           toArray(req.body.colorList).map(async (rawData) => {
@@ -676,6 +675,7 @@ export const StockController = {
               }));
           })
         );
+        result.message += "color schemes, "
 
         // save material, design, environment
         await Promise.all(
@@ -713,12 +713,14 @@ export const StockController = {
                 },
               },
             });
+            result.message += `"${modelName}", `;
           })
         );
 
         await Stock.update(validatedData, {
           where: { id: stockId },
         });
+        result.message += "stock, "
 
         await StockColor.destroy({
           where: {
@@ -728,6 +730,7 @@ export const StockController = {
             },
           },
         });
+        result.message += "stock color."
 
         res.response(200, result.message);
       } catch (error) {
