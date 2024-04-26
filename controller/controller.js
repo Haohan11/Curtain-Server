@@ -727,6 +727,7 @@ export const StockController = {
         });
         result.message += "stock, ";
 
+        // delete image file
         try {
           const imagePath = await StockColor.findAll({
             where: {
@@ -741,9 +742,9 @@ export const StockController = {
           await Promise.all(
             imagePath.map(async (item) => {
               ["stock_image", "color_image", "removal_image"].map((name) => {
+                if(!item[name]) return
                 const path = filePathAppend(item[name]).replace(/\\/g, "/");
-                // fs.access(path);
-                fs.unlink(path);
+                fs.unlink(path, () => {console.log(`Success deleted ${path}.`)});
               });
             })
           );
