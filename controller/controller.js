@@ -254,8 +254,6 @@ export const EnvironmentController = {
       const validatedData = await validator(req.body);
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      // console.log(req.files)
-      // return res.response(200)
       try {
         await Environment.create({
           ...validatedData,
@@ -264,6 +262,7 @@ export const EnvironmentController = {
           mask_image_name: req.files["mask_image"][0].originalname,
           mask_image: transFilePath(req.files["mask_image"][0].path),
         });
+        res.response(200, "Success added Environment.")
       } catch (error) {
         console.log(error);
         res.response(500);
@@ -274,7 +273,7 @@ export const EnvironmentController = {
   read: makeRegularController({
     tableName: "Environment",
     read: {
-      queryAttribute: ["id", "enable", "name", "comment"],
+      queryAttribute: ["id", "enable", "name", "env_image", "mask_image", "cropline", "comment"],
     },
   })["read"],
 };

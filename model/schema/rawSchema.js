@@ -486,6 +486,7 @@ export const EnvironmentSchema = {
     // -&achor-env
     env_image: {
       type: DataTypes.STRING(2048),
+      allowNull: false,
     },
     // -&achor-env
     mask_image_name: {
@@ -494,6 +495,12 @@ export const EnvironmentSchema = {
     // -&achor-env
     mask_image: {
       type: DataTypes.STRING(2048),
+      allowNull: false,
+    },
+    // -&achor-env
+    cropline: {
+      type: DataTypes.TEXT("long"),
+      allowNull: false,
     },
     // -&achor-env
     comment: {
