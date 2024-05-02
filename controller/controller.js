@@ -14,6 +14,7 @@ import {
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
+const uploadEnvImage = createUploadImage("env");
 
 /*
   About regularController:
@@ -243,12 +244,40 @@ const padding = (num, digits) => {
   return str;
 };
 
-export const EnvironmentController = makeRegularController({
-  tableName: "Environment",
-  read: {
-    queryAttribute: ["id", "enable", "name", "comment"],
-  },
-});
+export const EnvironmentController = {
+  create: [
+    uploadEnvImage.fields([{ name: "env_image" }, { name: "mask_image" }]),
+    async (req, res) => {
+      const { Environment } = req.app;
+
+      const { validateEnvironment: validator } = allValidator;
+      const validatedData = await validator(req.body);
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      // console.log(req.files)
+      // return res.response(200)
+      try {
+        await Environment.create({
+          ...validatedData,
+          env_image_name: req.files["env_image"][0].originalname,
+          env_image: transFilePath(req.files["env_image"][0].path),
+          mask_image_name: req.files["mask_image"][0].originalname,
+          mask_image: transFilePath(req.files["mask_image"][0].path),
+        });
+      } catch (error) {
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
+  update: [],
+  read: makeRegularController({
+    tableName: "Environment",
+    read: {
+      queryAttribute: ["id", "enable", "name", "comment"],
+    },
+  })["read"],
+};
 
 export const StockController = {
   create: [
@@ -742,9 +771,11 @@ export const StockController = {
           await Promise.all(
             imagePath.map(async (item) => {
               ["stock_image", "color_image", "removal_image"].map((name) => {
-                if(!item[name]) return
+                if (!item[name]) return;
                 const path = filePathAppend(item[name]).replace(/\\/g, "/");
-                fs.unlink(path, () => {console.log(`Success deleted ${path}.`)});
+                fs.unlink(path, () => {
+                  console.log(`Success deleted ${path}.`);
+                });
               });
             })
           );

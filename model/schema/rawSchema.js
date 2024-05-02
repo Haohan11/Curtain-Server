@@ -480,6 +480,22 @@ export const EnvironmentSchema = {
       defaultValue: true,
     },
     // -&achor-env
+    env_image_name: {
+      type: DataTypes.STRING(2048),
+    },
+    // -&achor-env
+    env_image: {
+      type: DataTypes.STRING(2048),
+    },
+    // -&achor-env
+    mask_image_name: {
+      type: DataTypes.STRING(2048),
+    },
+    // -&achor-env
+    mask_image: {
+      type: DataTypes.STRING(2048),
+    },
+    // -&achor-env
     comment: {
       type: DataTypes.TEXT("long"),
     },
