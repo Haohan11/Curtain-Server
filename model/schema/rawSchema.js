@@ -498,6 +498,10 @@ export const EnvironmentSchema = {
       allowNull: false,
     },
     // -&achor-env
+    width: {
+      type: DataTypes.STRING(20),
+    },
+    // -&achor-env
     cropline: {
       type: DataTypes.TEXT("long"),
       allowNull: false,

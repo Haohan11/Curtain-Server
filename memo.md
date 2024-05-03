@@ -1,0 +1,1 @@
+### todo: handle deleted stock color image while update

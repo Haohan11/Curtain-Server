@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 import {
   goHash,
@@ -262,18 +262,73 @@ export const EnvironmentController = {
           mask_image_name: req.files["mask_image"][0].originalname,
           mask_image: transFilePath(req.files["mask_image"][0].path),
         });
-        res.response(200, "Success added Environment.")
+        res.response(200, "Success added Environment.");
       } catch (error) {
         console.log(error);
         res.response(500);
       }
     },
   ],
-  update: [],
+  update: [
+    uploadEnvImage.fields([{ name: "env_image" }, { name: "mask_image" }]),
+    async (req, res) => {
+      const { Environment } = req.app;
+
+      const { validateEnvironment: validator } = allValidator;
+      const validatedData = await validator(req.body);
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { id } = req.body;
+      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+      
+      delete validatedData.env_image
+      delete validatedData.mask_image
+
+      const envImageChanged = !!req.files["env_image"]?.[0]
+      const maskImageChanged = !!req.files["mask_image"]?.[0]
+
+    
+      try {
+        // const { env_image, mask_image} = await Environment.findByPk(id)
+        // console.log(result)
+
+        await Environment.update(
+          {
+            ...validatedData,
+            ...(envImageChanged
+              ? {
+                  env_image_name: req.files["env_image"][0].originalname,
+                  env_image: transFilePath(req.files["env_image"][0].path),
+                }
+              : {}),
+            ...(maskImageChanged
+              ? {
+                  mask_image_name: req.files["mask_image"][0].originalname,
+                  mask_image: transFilePath(req.files["mask_image"][0].path),
+                }
+              : {}),
+          },
+          { where: { id } }
+        );
+        res.response(200, "Success updated Environment.");
+      } catch (error) {
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
   read: makeRegularController({
     tableName: "Environment",
     read: {
-      queryAttribute: ["id", "enable", "name", "env_image", "mask_image", "cropline", "comment"],
+      queryAttribute: [
+        "id",
+        "enable",
+        "name",
+        "env_image",
+        "mask_image",
+        "cropline",
+        "comment",
+      ],
     },
   })["read"],
 };
