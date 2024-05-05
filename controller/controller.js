@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   goHash,
@@ -280,14 +280,13 @@ export const EnvironmentController = {
 
       const { id } = req.body;
       if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
-      
-      delete validatedData.env_image
-      delete validatedData.mask_image
 
-      const envImageChanged = !!req.files["env_image"]?.[0]
-      const maskImageChanged = !!req.files["mask_image"]?.[0]
+      delete validatedData.env_image;
+      delete validatedData.mask_image;
 
-    
+      const envImageChanged = !!req.files["env_image"]?.[0];
+      const maskImageChanged = !!req.files["mask_image"]?.[0];
+
       try {
         // const { env_image, mask_image} = await Environment.findByPk(id)
         // console.log(result)
@@ -508,8 +507,15 @@ export const StockController = {
       Stock_Environment,
     } = req.app;
 
+    const onlyEnable = !(req.query.onlyEnable === undefined || req.query.onlyEnable === "false");
+    const whereOption = {
+      where: {
+        ...(onlyEnable ? { enable: true } : {}),
+      },
+    };
+
     try {
-      const total = await Stock.count();
+      const total = await Stock.count(whereOption);
       const { start, size, begin, totalPages } = getPage({
         ...req.query,
         total,
@@ -530,6 +536,7 @@ export const StockController = {
           "description",
           "create_time",
         ],
+        ...whereOption,
         raw: true,
       });
 
