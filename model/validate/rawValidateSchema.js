@@ -79,3 +79,9 @@ export const validateSupplierSchema = {
   code: Yup.string().max(15).required(),
   comment: Yup.string(),
 };
+
+export const validateCombinationSchema = {
+  name: Yup.string().max(15).required(),
+  user_id: Yup.number().integer().required(),
+  environment_id: Yup.number().integer().required(),
+};

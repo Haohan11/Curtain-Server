@@ -11,6 +11,7 @@ import {
   toArray,
   transFilePath,
   filePathAppend,
+  queryParam2False,
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -70,8 +71,15 @@ const makeRegularController = ({
       const tableConnection = req.app[tableName];
       const { queryAttribute = [] } = read;
 
+      const onlyEnable = queryParam2False(req.body.onlyEnable);
+      const whereOption = {
+        where: {
+          ...(onlyEnable ? { enable: true } : {}),
+        },
+      };
+
       try {
-        const total = await tableConnection.count();
+        const total = await tableConnection.count(whereOption);
         const { start, size, begin, totalPages } = getPage({
           total,
           ...req.query,
@@ -81,6 +89,7 @@ const makeRegularController = ({
           offset: begin,
           limit: size,
           attributes: queryAttribute,
+          ...whereOption,
         });
 
         return res.response(200, {
@@ -507,7 +516,8 @@ export const StockController = {
       Stock_Environment,
     } = req.app;
 
-    const onlyEnable = !(req.query.onlyEnable === undefined || req.query.onlyEnable === "false");
+    const onlyEnable = queryParam2False(req.body.onlyEnable);
+
     const whereOption = {
       where: {
         ...(onlyEnable ? { enable: true } : {}),
@@ -657,6 +667,427 @@ export const StockController = {
       next();
     },
     async (req, res) => {
+      const {
+        Stock,
+        Stock_Material,
+        Stock_Design,
+        Stock_Environment,
+        StockColor,
+        ColorName,
+        StockColor_ColorScheme,
+      } = req.app;
+
+      const { validateStock: validator } = allValidator;
+
+      const validatedData = await validator({
+        ...req.body,
+        series_id: req.body.series,
+        supplier_id: not0Falsy2Undefined(JSON.parse(req.body.supplier)),
+      });
+
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { id: stockId } = req.body;
+      if (isNaN(parseInt(stockId))) return res.response(400, "Invalid id.");
+
+      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const author = { create_name, create_id, modify_name, modify_id };
+
+      const result = { message: "success updated: " };
+      try {
+        const preserveIds = [];
+
+        req.body.colorList &&
+          (await Promise.all(
+            toArray(req.body.colorList).map(async (rawData) => {
+              const color = JSON.parse(rawData);
+              const { id: colorId, color_name_id, colorSchemes } = color;
+              const isNewColor = colorId < 0;
+
+              const { name } = await ColorName.findByPk(color_name_id);
+              if (!name) {
+                const wrongNameError = new Error("Invalid name id.");
+                wrongNameError.name = "wrongNameId";
+                throw wrongNameError;
+              }
+
+              const newData = {
+                ...(isNewColor ? {} : { id: colorId }),
+                stock_id: stockId,
+                color_name_id,
+                name,
+                ...author,
+                ...["stock", "color", "removal"].reduce(
+                  (imageDict, name, index) => {
+                    if (!req.files[`colorImages_${colorId}_${index}`]) {
+                      if (!isNewColor) return imageDict;
+                      const loseImageError = new Error(`Lose ${name} image.`);
+                      loseImageError.name = "ImageLose";
+                      throw loseImageError;
+                    }
+                    return {
+                      ...imageDict,
+                      [`${name}_image_name`]:
+                        req.files[`colorImages_${colorId}_${index}`]
+                          .originalname,
+                      [`${name}_image`]: transFilePath(
+                        req.files[`colorImages_${colorId}_${index}`].path
+                      ),
+                    };
+                  },
+                  {}
+                ),
+              };
+
+              const stock_color_id = await {
+                async true() {
+                  const { id } = await StockColor.create(newData);
+                  return id;
+                },
+                async false() {
+                  await StockColor.update(newData, { where: { id: colorId } });
+                  return colorId;
+                },
+              }[isNewColor.toString()]();
+              preserveIds.push(stock_color_id);
+
+              const insert_data = colorSchemes.reduce((list, scheme) => {
+                const schemeId = parseInt(scheme);
+                return isNaN(schemeId)
+                  ? list
+                  : [
+                      ...list,
+                      {
+                        ...author,
+                        color_scheme_id: schemeId,
+                        stock_color_id,
+                      },
+                    ];
+              }, []);
+
+              StockColor_ColorScheme.removeAttribute("id");
+              await StockColor_ColorScheme.bulkCreate(insert_data, {
+                updateOnDuplicate: Object.keys(author),
+              });
+              !isNewColor &&
+                (await StockColor_ColorScheme.destroy({
+                  where: {
+                    stock_color_id,
+                    color_scheme_id: {
+                      [Op.notIn]: colorSchemes,
+                    },
+                  },
+                }));
+            })
+          ));
+        result.message += "color schemes, ";
+
+        // save material, design, environment
+        await Promise.all(
+          Object.entries({
+            material: Stock_Material,
+            design: Stock_Design,
+            environment: Stock_Environment,
+          }).map(async ([modelName, Model]) => {
+            const listData = req.body[modelName] ?? [];
+            const insert_data = toArray(listData).reduce(
+              (list, id) =>
+                not0Falsy2Undefined(id) === undefined
+                  ? list
+                  : [
+                      ...list,
+                      {
+                        ...author,
+                        stock_id: stockId,
+                        [`${modelName}_id`]: +not0Falsy2Undefined(id),
+                      },
+                    ],
+              []
+            );
+
+            Model.removeAttribute("id");
+            await Model.bulkCreate(insert_data, {
+              updateOnDuplicate: Object.keys(author),
+            });
+
+            await Model.destroy({
+              where: {
+                stock_id: stockId,
+                [`${modelName}_id`]: {
+                  [Op.notIn]: toArray(listData),
+                },
+              },
+            });
+            result.message += `"${modelName}", `;
+          })
+        );
+
+        await Stock.update(validatedData, {
+          where: { id: stockId },
+        });
+        result.message += "stock, ";
+
+        // delete image file
+        try {
+          const imagePath = await StockColor.findAll({
+            where: {
+              stock_id: stockId,
+              id: {
+                [Op.notIn]: preserveIds,
+              },
+            },
+            attributes: ["stock_image", "color_image", "removal_image"],
+          });
+
+          await Promise.all(
+            imagePath.map(async (item) => {
+              ["stock_image", "color_image", "removal_image"].map((name) => {
+                if (!item[name]) return;
+                const path = filePathAppend(item[name]).replace(/\\/g, "/");
+                fs.unlink(path, () => {
+                  console.log(`Success deleted ${path}.`);
+                });
+              });
+            })
+          );
+        } catch (error) {
+          console.warn(error);
+        }
+
+        await StockColor.destroy({
+          where: {
+            stock_id: stockId,
+            id: {
+              [Op.notIn]: preserveIds,
+            },
+          },
+        });
+        result.message += "stock color.";
+
+        res.response(200, result.message);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        if (["ImageLose", "wrongNameId"].includes(error.name))
+          return res.response(400, error.message);
+
+        res.response(500, `Internal server error and ${result.message}.`);
+      }
+    },
+  ],
+};
+
+export const CombinationController = {
+  create: [
+    multer().none(),
+    async (req, res) => {
+      const { Combination, Combination_Stock } = req.app;
+
+      // check stock list first
+      try {
+        console.log("=================", req.body)
+        const stockList = JSON.parse(req.body.stockList);
+        if (!Array.isArray(stockList)) throw new Error();
+      } catch {
+        return res.response(400, "Invalid stock list.");
+      }
+
+      const { validateCombination: validator } = allValidator;
+
+      const validatedData = await validator(req.body);
+
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const author = { create_name, create_id, modify_name, modify_id };
+
+      try {
+        const { id: combination_id } = await Combination.create(validatedData);
+
+        const stockList = JSON.parse(req.body.stockList);
+
+        const insert_data = stockList.map((stockId) => {
+          const stock_id = parseInt(stockId);
+          if (isNaN(stock_id)) {
+            const error = new Error("Invalid stock id.");
+            error.name = "wrongStockId";
+            throw error;
+          }
+          return { ...author, combination_id, stock_id };
+        });
+
+        Combination_Stock.removeAttribute("id");
+        await Combination_Stock.bulkCreate(insert_data);
+
+        res.response(200, "Success added Combination.");
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        if (error.name === "wrongStockId")
+          return res.response(400, error.message);
+        res.response(500, `Internal server error and ${result.message}.`);
+      }
+    },
+  ],
+  read: async (req, res) => {
+    return res.response(400, "not avaliable");
+    const {
+      Stock,
+      StockColor,
+      StockColor_ColorScheme,
+      ColorScheme,
+      Series,
+      Supplier,
+      Material,
+      Design,
+      Environment,
+      Stock_Material,
+      Stock_Design,
+      Stock_Environment,
+    } = req.app;
+
+    const onlyEnable = !(
+      req.query.onlyEnable === undefined || req.query.onlyEnable === "false"
+    );
+    const whereOption = {
+      where: {
+        ...(onlyEnable ? { enable: true } : {}),
+      },
+    };
+
+    try {
+      const total = await Stock.count(whereOption);
+      const { start, size, begin, totalPages } = getPage({
+        ...req.query,
+        total,
+      });
+
+      const stockList = await Stock.findAll({
+        offset: begin,
+        limit: size,
+        attributes: [
+          "id",
+          "enable",
+          "code",
+          "name",
+          "series_id",
+          "supplier_id",
+          "block",
+          "absorption",
+          "description",
+          "create_time",
+        ],
+        ...whereOption,
+        raw: true,
+      });
+
+      const MDEdict = {
+        material: [Material, Stock_Material],
+        design: [Design, Stock_Design],
+        environment: [Environment, Stock_Environment],
+      };
+
+      const list = await Promise.all(
+        stockList.map(async (stockData) => {
+          const { id, series_id, supplier_id, enable } = stockData;
+          // option raw will cause sequlize query give 0 or 1
+          stockData.enable = !!enable;
+
+          // get material, design, environment data
+          await Promise.all(
+            Object.entries(MDEdict).map(async ([name, models]) => {
+              const idList = await models[1].findAll({
+                where: {
+                  stock_id: id,
+                },
+                attributes: [`${name}_id`],
+                raw: true,
+              });
+
+              stockData[name] = await models[0].findAll({
+                where: {
+                  id: idList.map((item) => item[`${name}_id`]),
+                },
+                attributes: ["name", "id", "enable"],
+                raw: true,
+              });
+            })
+          );
+
+          stockData.series = await Series.findByPk(series_id);
+          stockData.supplier = await Supplier.findByPk(supplier_id);
+
+          const colorList = await StockColor.findAll({
+            where: { stock_id: id },
+            attributes: [
+              "id",
+              "name",
+              "color_name_id",
+              "stock_image",
+              "stock_image_name",
+              "color_image",
+              "color_image_name",
+              "removal_image",
+              "removal_image_name",
+            ],
+            raw: true,
+          });
+
+          const colorSchemeSet = new Map();
+          stockData.colorList = await Promise.all(
+            colorList.map(async (colorData) => {
+              const { id } = colorData;
+
+              // will give array like: [{color_scheme_id: id}, {color_scheme_id: id}, ...]
+              const colorSchemeIdList = await StockColor_ColorScheme.findAll({
+                where: {
+                  stock_color_id: id,
+                },
+                attributes: ["color_scheme_id"],
+                raw: true,
+              });
+
+              colorData.colorSchemeList = await Promise.all(
+                colorSchemeIdList.map(async ({ color_scheme_id }) => {
+                  const scheme = await ColorScheme.findOne({
+                    where: {
+                      id: color_scheme_id,
+                    },
+                    attributes: ["id", "enable", "name"],
+                    raw: true,
+                  });
+                  colorSchemeSet.set(scheme.id, scheme);
+                  return scheme;
+                })
+              );
+
+              return colorData;
+            })
+          );
+
+          stockData.colorScheme = [...colorSchemeSet.values()];
+
+          return stockData;
+        })
+      );
+
+      return res.response(200, {
+        start,
+        size,
+        begin,
+        total,
+        totalPages,
+        list,
+      });
+    } catch (error) {
+      // log sql message with error.original.sqlMessage
+      console.log(error);
+      res.response(500);
+    }
+  },
+  update: [
+    async (req, res) => {
+      return res.response(400, "not avaliable");
       const {
         Stock,
         Stock_Material,
