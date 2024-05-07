@@ -57,6 +57,13 @@ const tablesDependencies = {
       "Environment",
     ],
   },
+  Combination: {
+    tableName: "Combination",
+    connectMiddlewares: [
+      "Combination",
+      "Combination_Stock",
+    ],
+  },
 };
 
 const Routers = Object.entries(tablesDependencies).reduce(

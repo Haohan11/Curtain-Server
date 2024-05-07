@@ -238,6 +238,14 @@ export const StockSchema = {
         otherKey: "environment_id",
       },
     },
+    {
+      targetTable: "Combination",
+      option: {
+        through: "Combination_Stock",
+        foreignKey: "stock_id",
+        otherKey: "combination_id",
+      },
+    },
   ],
 };
 
@@ -523,6 +531,43 @@ export const EnvironmentSchema = {
     },
   },
 };
+
+export const CombinationSchema = {
+  name: "combination",
+  cols: {
+    // -&achor-pp
+    name: {
+      type: DataTypes.CHAR(15),
+      allowNull: false,
+    },
+    // -&achor-pp
+    enable: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    // -&achor-pp
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    // -&achor-pp
+    environment_id: {
+      type: DataTypes.INTEGER,
+    },
+  },
+  option: {
+    tableName: "combination",
+  },
+  belongsToMany: {
+    targetTable: "Stock",
+    option: {
+      through: "Combination_Stock",
+      foreignKey: "combination_id",
+      otherKey: "stock_id",
+    },
+  },
+};
+
 //--------- normal Schemas above ---
 
 //--------- junction schema below ---
@@ -705,4 +750,50 @@ export const Stock_EnvironmentSchema = {
     },
   ],
 };
+
+export const Combination_StockSchema = {
+  name: "combination_stock",
+  cols: {
+    combination_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "combination",
+        key: "id",
+      },
+    },
+    stock_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "stock",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "combination_stock",
+  },
+  belongsTo: [
+    {
+      targetTable: "Combination",
+      option: {
+        foreignKey: {
+          name: "combination_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "Stock",
+      option: {
+        foreignKey: {
+          name: "stock_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+};
+
 //--------- junction schema above ---

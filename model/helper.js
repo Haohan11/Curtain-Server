@@ -165,10 +165,7 @@ export const createUploadImage = (() => {
       },
       filename: (req, file, cb) => {
         const ext = extMap[file.mimetype];
-        file.originalname = Buffer.from(
-          file.originalname,
-          "binary"
-        ).toString();
+        file.originalname = Buffer.from(file.originalname, "binary").toString();
         cb(null, crypto.randomUUID() + ext);
       },
     });
@@ -182,9 +179,13 @@ export const createUploadImage = (() => {
 })();
 
 export const transFilePath = (path) => {
-  return path.replace(staticPathName, "")
-}
+  return path.replace(staticPathName, "");
+};
 
-export const filePathAppend = (path) => `${staticPathName}/${path}`
+export const queryParam2False = (target) =>
+  !(target === undefined || target === "false")
+;
+
+export const filePathAppend = (path) => `${staticPathName}/${path}`;
 
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
