@@ -62,6 +62,8 @@ const tablesDependencies = {
     connectMiddlewares: [
       "Combination",
       "Combination_Stock",
+      "Environment",
+      "Stock",
     ],
   },
 };

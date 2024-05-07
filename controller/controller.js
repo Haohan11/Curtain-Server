@@ -3,6 +3,8 @@ import multer from "multer";
 import fs from "fs";
 import { Op } from "sequelize";
 
+import findStock from "./findStock.js";
+
 import {
   goHash,
   getPage,
@@ -13,6 +15,9 @@ import {
   filePathAppend,
   queryParam2False,
 } from "../model/helper.js";
+
+import authenticationMiddleware from "../middleware/authenticationMiddleware.js";
+import addUserMiddleware from "../middleware/addUser.js";
 
 const uploadStockImage = createUploadImage("stock");
 const uploadEnvImage = createUploadImage("env");
@@ -885,7 +890,6 @@ export const CombinationController = {
 
       // check stock list first
       try {
-        console.log("=================", req.body)
         const stockList = JSON.parse(req.body.stockList);
         if (!Array.isArray(stockList)) throw new Error();
       } catch {
@@ -925,166 +929,83 @@ export const CombinationController = {
         console.log(error);
         if (error.name === "wrongStockId")
           return res.response(400, error.message);
-        res.response(500, `Internal server error and ${result.message}.`);
+        res.response(500);
       }
     },
   ],
-  read: async (req, res) => {
-    return res.response(400, "not avaliable");
-    const {
-      Stock,
-      StockColor,
-      StockColor_ColorScheme,
-      ColorScheme,
-      Series,
-      Supplier,
-      Material,
-      Design,
-      Environment,
-      Stock_Material,
-      Stock_Design,
-      Stock_Environment,
-    } = req.app;
+  read: [
+    authenticationMiddleware,
+    addUserMiddleware,
+    async (req, res) => {
+      const { Combination, Combination_Stock, Environment, Stock } = req.app;
+      const { user_id } = req._user;
 
-    const onlyEnable = !(
-      req.query.onlyEnable === undefined || req.query.onlyEnable === "false"
-    );
-    const whereOption = {
-      where: {
-        ...(onlyEnable ? { enable: true } : {}),
-      },
-    };
+      try {
+        const total = await Combination.count({
+          where: {
+            user_id,
+          },
+        });
+        const { start, size, begin, totalPages } = getPage({
+          ...req.query,
+          total,
+        });
 
-    try {
-      const total = await Stock.count(whereOption);
-      const { start, size, begin, totalPages } = getPage({
-        ...req.query,
-        total,
-      });
+        const combList = await Combination.findAll({
+          offset: begin,
+          limit: size,
+          attributes: ["id", "name", "environment_id", "create_time"],
+        });
 
-      const stockList = await Stock.findAll({
-        offset: begin,
-        limit: size,
-        attributes: [
-          "id",
-          "enable",
-          "code",
-          "name",
-          "series_id",
-          "supplier_id",
-          "block",
-          "absorption",
-          "description",
-          "create_time",
-        ],
-        ...whereOption,
-        raw: true,
-      });
+        const list = await Promise.all(
+          combList.map(async (comb) => {
+            const { name: environment_name } = await Environment.findByPk(
+              comb.environment_id
+            );
+            const stockIdList = await Combination_Stock.findAll({
+              attributes: ["stock_id"],
+              where: { combination_id: comb.id },
+            });
+            const stockList = await findStock(req, {
+              attributes: [
+                "id",
+                "enable",
+                "code",
+                "name",
+                "series_id",
+                "supplier_id",
+                "block",
+                "absorption",
+                "description",
+                "create_time",
+              ],
+              where: {
+                id: stockIdList.map((item) => item.stock_id),
+              },
+            });
+            return {
+              ...comb.get({ plain: true }),
+              environment_name,
+              stockList,
+            };
+          })
+        );
 
-      const MDEdict = {
-        material: [Material, Stock_Material],
-        design: [Design, Stock_Design],
-        environment: [Environment, Stock_Environment],
-      };
-
-      const list = await Promise.all(
-        stockList.map(async (stockData) => {
-          const { id, series_id, supplier_id, enable } = stockData;
-          // option raw will cause sequlize query give 0 or 1
-          stockData.enable = !!enable;
-
-          // get material, design, environment data
-          await Promise.all(
-            Object.entries(MDEdict).map(async ([name, models]) => {
-              const idList = await models[1].findAll({
-                where: {
-                  stock_id: id,
-                },
-                attributes: [`${name}_id`],
-                raw: true,
-              });
-
-              stockData[name] = await models[0].findAll({
-                where: {
-                  id: idList.map((item) => item[`${name}_id`]),
-                },
-                attributes: ["name", "id", "enable"],
-                raw: true,
-              });
-            })
-          );
-
-          stockData.series = await Series.findByPk(series_id);
-          stockData.supplier = await Supplier.findByPk(supplier_id);
-
-          const colorList = await StockColor.findAll({
-            where: { stock_id: id },
-            attributes: [
-              "id",
-              "name",
-              "color_name_id",
-              "stock_image",
-              "stock_image_name",
-              "color_image",
-              "color_image_name",
-              "removal_image",
-              "removal_image_name",
-            ],
-            raw: true,
-          });
-
-          const colorSchemeSet = new Map();
-          stockData.colorList = await Promise.all(
-            colorList.map(async (colorData) => {
-              const { id } = colorData;
-
-              // will give array like: [{color_scheme_id: id}, {color_scheme_id: id}, ...]
-              const colorSchemeIdList = await StockColor_ColorScheme.findAll({
-                where: {
-                  stock_color_id: id,
-                },
-                attributes: ["color_scheme_id"],
-                raw: true,
-              });
-
-              colorData.colorSchemeList = await Promise.all(
-                colorSchemeIdList.map(async ({ color_scheme_id }) => {
-                  const scheme = await ColorScheme.findOne({
-                    where: {
-                      id: color_scheme_id,
-                    },
-                    attributes: ["id", "enable", "name"],
-                    raw: true,
-                  });
-                  colorSchemeSet.set(scheme.id, scheme);
-                  return scheme;
-                })
-              );
-
-              return colorData;
-            })
-          );
-
-          stockData.colorScheme = [...colorSchemeSet.values()];
-
-          return stockData;
-        })
-      );
-
-      return res.response(200, {
-        start,
-        size,
-        begin,
-        total,
-        totalPages,
-        list,
-      });
-    } catch (error) {
-      // log sql message with error.original.sqlMessage
-      console.log(error);
-      res.response(500);
-    }
-  },
+        return res.response(200, {
+          start,
+          size,
+          begin,
+          total,
+          totalPages,
+          list,
+        });
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
   update: [
     async (req, res) => {
       return res.response(400, "not avaliable");

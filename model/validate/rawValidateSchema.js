@@ -81,7 +81,7 @@ export const validateSupplierSchema = {
 };
 
 export const validateCombinationSchema = {
-  name: Yup.string().max(15).required(),
+  name: Yup.string().max(50).required(),
   user_id: Yup.number().integer().required(),
   environment_id: Yup.number().integer().required(),
 };

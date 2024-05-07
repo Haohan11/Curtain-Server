@@ -537,7 +537,7 @@ export const CombinationSchema = {
   cols: {
     // -&achor-pp
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.CHAR(50),
       allowNull: false,
     },
     // -&achor-pp

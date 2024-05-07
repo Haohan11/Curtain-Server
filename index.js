@@ -21,6 +21,7 @@ const {
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
 import responseMiddleware from "./middleware/responseMiddleware.js";
 import authenticationMiddleware from "./middleware/authenticationMiddleware.js";
+import addUserMiddleware from "./middleware/addUser.js";
 import notFoundResponse from "./middleware/404reponse.js";
 import establishAssociation from "./middleware/establishAssociation.js";
 import staticPathName from "./model/staticPathName.js";
@@ -88,8 +89,9 @@ app.post("/login", async function (req, res) {
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
-
 app.use(establishAssociation);
+
+// app.use(addUserMiddleware);
 
 app.use("/employee", EmployeeRouter);
 app.use("/series", SeriesRouter);
