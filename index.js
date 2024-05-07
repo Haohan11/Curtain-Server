@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
 import { Routers } from "./routes.js";
 
@@ -17,9 +19,14 @@ const {
 
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
 import responseMiddleware from "./middleware/responseMiddleware.js";
+import authenticationMiddleware from "./middleware/authenticationMiddleware.js";
 import notFoundResponse from "./middleware/404reponse.js";
 import establishAssociation from "./middleware/establishAssociation.js";
 import staticPathName from "./model/staticPathName.js";
+
+import connectToDataBase from "./model/connectToDatabase.js";
+import Schemas from "./model/schema/schema.js";
+import createSchema from "./model/createSchema.js";
 
 const app = express();
 
@@ -32,6 +39,51 @@ app.use(express.json());
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
+
+app.post("/login", async function (req, res) {
+  try {
+    const { account, password } = req.body;
+    const { UserSchema } = Schemas;
+
+    const sequelize = await connectToDataBase();
+    const User = createSchema(sequelize, UserSchema);
+
+    sequelize.sync().then(() => {
+      User.findOne({
+        where: {
+          account: account
+        }
+      }).then(user => {
+        if (!user) {
+          return res.response(404, "帳號錯誤");
+        }
+        const isPasswordCorrect = bcrypt.compareSync(password,user.password);
+        if (!isPasswordCorrect) {
+          return res.response(403, "密碼錯誤");
+        }
+
+        const payload = {
+          user_account: account,
+          user_password: password
+        };
+        const token = jwt.sign({ payload, exp: Math.floor(Date.now() / 1000) + (60 * 20) }, 'my_secret_key');
+
+        res.response(200, { 
+          "id": user.id,
+          "name": user.name,
+          "token": token,
+          'token_type': 'bearer',                
+        });
+      });
+    });
+  } catch (error) {
+    console.log(error);
+    res.response(500, { error });
+  }
+});
+
+// jwt token authentication
+// app.use(authenticationMiddleware);
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
@@ -47,6 +99,15 @@ app.use("/design", DesignRouter);
 app.use("/supplier", SupplierRouter);
 app.use("/stock", StockRouter);
 app.use("/color-name", ColorNameRouter);
+
+app.post("/logout", async function (req, res) {
+  try {
+    res.response(200, "登出成功");
+  } catch (error) {
+    console.log(error);
+    res.response(500, { error });
+  }
+});
 
 app.get("/", (req, res) => {
   res.response(200, "Hello world");
