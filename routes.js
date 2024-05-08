@@ -85,11 +85,10 @@ const Routers = Object.entries(tablesDependencies).reduce(
 
     const controller = AllController[`${tableName}Controller`];
 
-    router.use(addAuthor);
-
-    router.post("/", ...toArray(controller.create));
-    router.get("/", ...toArray(controller.read));
-    router.put("/", ...toArray(controller.update));
+    controller.create && router.post("/", ...toArray(controller.create));
+    controller.read && router.get("/", ...toArray(controller.read));
+    controller.update && router.put("/", ...toArray(controller.update));
+    controller.delete && router.delete("/", ...toArray(controller.delete));
 
     dict[`${tableName}Router`] = router;
     return dict;

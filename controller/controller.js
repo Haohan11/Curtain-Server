@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 import findStock from "./findStock.js";
 
@@ -937,7 +937,7 @@ export const CombinationController = {
     authenticationMiddleware,
     addUserMiddleware,
     async (req, res) => {
-      const { Combination, Combination_Stock, Environment, Stock } = req.app;
+      const { Combination, Combination_Stock, Environment } = req.app;
       const { user_id } = req._user;
 
       try {
@@ -959,9 +959,8 @@ export const CombinationController = {
 
         const list = await Promise.all(
           combList.map(async (comb) => {
-            const { name: environment_name } = await Environment.findByPk(
-              comb.environment_id
-            );
+            const { name: environment_name, env_image } =
+              await Environment.findByPk(comb.environment_id);
             const stockIdList = await Combination_Stock.findAll({
               attributes: ["stock_id"],
               where: { combination_id: comb.id },
@@ -986,6 +985,7 @@ export const CombinationController = {
             return {
               ...comb.get({ plain: true }),
               environment_name,
+              env_image,
               stockList,
             };
           })
@@ -1215,6 +1215,28 @@ export const CombinationController = {
 
         res.response(500, `Internal server error and ${result.message}.`);
       }
+    },
+  ],
+  delete: [
+    multer().none(),
+    authenticationMiddleware,
+    addUserMiddleware,
+    async (req, res) => {
+      const { Combination } = req.app;
+      const id = parseInt(req.body.id);
+
+      if(isNaN(id)) return res.response(400)
+
+      const { user_id } = req._user;
+
+      try {
+        await Combination.destroy({ where: { id, user_id } });
+      } catch (error) {
+        console.log(error)
+        return res.response(500)
+      }
+
+      res.response(200, "Success deleted combination.");
     },
   ],
 };
