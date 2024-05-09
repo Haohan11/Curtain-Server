@@ -68,13 +68,15 @@ app.post("/login", async function (req, res) {
           user_account: account,
           user_password: password
         };
-        const token = jwt.sign({ payload, exp: Math.floor(Date.now() / 1000) + (60 * 20) }, 'my_secret_key');
+        const exp = Math.floor(Date.now() / 1000) + (60 * 60)
+        const token = jwt.sign({ payload, exp }, 'my_secret_key');
 
         res.response(200, { 
           "id": user.id,
           "name": user.name,
           "token": token,
-          'token_type': 'bearer',                
+          'token_type': 'bearer',
+          "_exp": exp,     
         });
       });
     });
