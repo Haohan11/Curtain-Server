@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 
 import findStock from "./findStock.js";
 
@@ -717,7 +717,7 @@ export const StockController = {
               }
 
               const newData = {
-                ...(isNewColor ? {} : { id: colorId }),
+                ...(!isNewColor && { id: colorId }),
                 stock_id: stockId,
                 color_name_id,
                 name,
@@ -885,6 +885,8 @@ export const StockController = {
 export const CombinationController = {
   create: [
     multer().none(),
+    authenticationMiddleware,
+    addUserMiddleware,
     async (req, res) => {
       const { Combination, Combination_Stock } = req.app;
 
@@ -898,11 +900,11 @@ export const CombinationController = {
 
       const { validateCombination: validator } = allValidator;
 
-      const validatedData = await validator(req.body);
+      const validatedData = await validator({ ...req.body, ...req._user });
 
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const { create_name, create_id, modify_name, modify_id } = req._user;
       const author = { create_name, create_id, modify_name, modify_id };
 
       try {
@@ -1007,213 +1009,63 @@ export const CombinationController = {
     },
   ],
   update: [
+    multer().none(),
+    authenticationMiddleware,
+    addUserMiddleware,
     async (req, res) => {
-      return res.response(400, "not avaliable");
-      const {
-        Stock,
-        Stock_Material,
-        Stock_Design,
-        Stock_Environment,
-        StockColor,
-        ColorName,
-        StockColor_ColorScheme,
-      } = req.app;
+      // return res.response(200, {...req.body, ...req._user})
+      const { Combination, Combination_Stock } = req.app;
 
-      const { validateStock: validator } = allValidator;
+      // check stock list first
+      try {
+        const stockList = JSON.parse(req.body.stockList);
+        if (!Array.isArray(stockList)) throw new Error();
+      } catch {
+        return res.response(400, "Invalid stock list.");
+      }
 
-      const validatedData = await validator({
-        ...req.body,
-        series_id: req.body.series,
-        supplier_id: not0Falsy2Undefined(JSON.parse(req.body.supplier)),
-      });
+      const { validateCombination: validator } = allValidator;
+
+      const validatedData = await validator({ ...req.body, ...req._user });
 
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      const { id: stockId } = req.body;
-      if (isNaN(parseInt(stockId))) return res.response(400, "Invalid id.");
+      const combination_id = parseInt(req.body.id);
+      if (isNaN(combination_id)) return res.response(400, "Invalid comb id.");
 
-      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const { create_name, create_id, modify_name, modify_id } = req._user;
       const author = { create_name, create_id, modify_name, modify_id };
 
-      const result = { message: "success updated: " };
       try {
-        const preserveIds = [];
-
-        req.body.colorList &&
-          (await Promise.all(
-            toArray(req.body.colorList).map(async (rawData) => {
-              const color = JSON.parse(rawData);
-              const { id: colorId, color_name_id, colorSchemes } = color;
-              const isNewColor = colorId < 0;
-
-              const { name } = await ColorName.findByPk(color_name_id);
-              if (!name) {
-                const wrongNameError = new Error("Invalid name id.");
-                wrongNameError.name = "wrongNameId";
-                throw wrongNameError;
-              }
-
-              const newData = {
-                ...(isNewColor ? {} : { id: colorId }),
-                stock_id: stockId,
-                color_name_id,
-                name,
-                ...author,
-                ...["stock", "color", "removal"].reduce(
-                  (imageDict, name, index) => {
-                    if (!req.files[`colorImages_${colorId}_${index}`]) {
-                      if (!isNewColor) return imageDict;
-                      const loseImageError = new Error(`Lose ${name} image.`);
-                      loseImageError.name = "ImageLose";
-                      throw loseImageError;
-                    }
-                    return {
-                      ...imageDict,
-                      [`${name}_image_name`]:
-                        req.files[`colorImages_${colorId}_${index}`]
-                          .originalname,
-                      [`${name}_image`]: transFilePath(
-                        req.files[`colorImages_${colorId}_${index}`].path
-                      ),
-                    };
-                  },
-                  {}
-                ),
-              };
-
-              const stock_color_id = await {
-                async true() {
-                  const { id } = await StockColor.create(newData);
-                  return id;
-                },
-                async false() {
-                  await StockColor.update(newData, { where: { id: colorId } });
-                  return colorId;
-                },
-              }[isNewColor.toString()]();
-              preserveIds.push(stock_color_id);
-
-              const insert_data = colorSchemes.reduce((list, scheme) => {
-                const schemeId = parseInt(scheme);
-                return isNaN(schemeId)
-                  ? list
-                  : [
-                      ...list,
-                      {
-                        ...author,
-                        color_scheme_id: schemeId,
-                        stock_color_id,
-                      },
-                    ];
-              }, []);
-
-              StockColor_ColorScheme.removeAttribute("id");
-              await StockColor_ColorScheme.bulkCreate(insert_data, {
-                updateOnDuplicate: Object.keys(author),
-              });
-              !isNewColor &&
-                (await StockColor_ColorScheme.destroy({
-                  where: {
-                    stock_color_id,
-                    color_scheme_id: {
-                      [Op.notIn]: colorSchemes,
-                    },
-                  },
-                }));
-            })
-          ));
-        result.message += "color schemes, ";
-
-        // save material, design, environment
-        await Promise.all(
-          Object.entries({
-            material: Stock_Material,
-            design: Stock_Design,
-            environment: Stock_Environment,
-          }).map(async ([modelName, Model]) => {
-            const listData = req.body[modelName] ?? [];
-            const insert_data = toArray(listData).reduce(
-              (list, id) =>
-                not0Falsy2Undefined(id) === undefined
-                  ? list
-                  : [
-                      ...list,
-                      {
-                        ...author,
-                        stock_id: stockId,
-                        [`${modelName}_id`]: +not0Falsy2Undefined(id),
-                      },
-                    ],
-              []
-            );
-
-            Model.removeAttribute("id");
-            await Model.bulkCreate(insert_data, {
-              updateOnDuplicate: Object.keys(author),
-            });
-
-            await Model.destroy({
-              where: {
-                stock_id: stockId,
-                [`${modelName}_id`]: {
-                  [Op.notIn]: toArray(listData),
-                },
-              },
-            });
-            result.message += `"${modelName}", `;
-          })
-        );
-
-        await Stock.update(validatedData, {
-          where: { id: stockId },
+        await Combination.update(validatedData, {
+          where: { id: combination_id },
         });
-        result.message += "stock, ";
 
-        // delete image file
-        try {
-          const imagePath = await StockColor.findAll({
-            where: {
-              stock_id: stockId,
-              id: {
-                [Op.notIn]: preserveIds,
-              },
-            },
-            attributes: ["stock_image", "color_image", "removal_image"],
-          });
+        const stockIdList = JSON.parse(req.body.stockList);
 
-          await Promise.all(
-            imagePath.map(async (item) => {
-              ["stock_image", "color_image", "removal_image"].map((name) => {
-                if (!item[name]) return;
-                const path = filePathAppend(item[name]).replace(/\\/g, "/");
-                fs.unlink(path, () => {
-                  console.log(`Success deleted ${path}.`);
-                });
-              });
-            })
-          );
-        } catch (error) {
-          console.warn(error);
-        }
-
-        await StockColor.destroy({
+        await Combination_Stock.destroy({
           where: {
-            stock_id: stockId,
-            id: {
-              [Op.notIn]: preserveIds,
+            combination_id,
+            stock_id: {
+              [Op.notIn]: stockIdList,
             },
           },
         });
-        result.message += "stock color.";
 
-        res.response(200, result.message);
+        const insert_data = stockIdList.map((stock_id) => ({
+          ...author,
+          combination_id,
+          stock_id,
+        }));
+
+        await Combination_Stock.bulkCreate(insert_data, {
+          updateOnDuplicate: Object.keys(author),
+        });
+
+        res.response(200, "Success updated Combination.");
       } catch (error) {
-        // log sql message with error.original.sqlMessage
         console.log(error);
-        if (["ImageLose", "wrongNameId"].includes(error.name))
-          return res.response(400, error.message);
-
-        res.response(500, `Internal server error and ${result.message}.`);
+        res.response(500);
       }
     },
   ],
@@ -1225,15 +1077,15 @@ export const CombinationController = {
       const { Combination } = req.app;
       const id = parseInt(req.body.id);
 
-      if(isNaN(id)) return res.response(400)
+      if (isNaN(id)) return res.response(400);
 
       const { user_id } = req._user;
 
       try {
         await Combination.destroy({ where: { id, user_id } });
       } catch (error) {
-        console.log(error)
-        return res.response(500)
+        console.log(error);
+        return res.response(500);
       }
 
       res.response(200, "Success deleted combination.");

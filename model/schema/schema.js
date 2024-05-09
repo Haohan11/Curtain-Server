@@ -73,17 +73,17 @@ const getFixedField = (schemaName) => ({
     getterMethods: {
       create_time() {
         return this.getDataValue("create_time")
-          .toISOString()
-          .replace(/T/, " ")
-          .replace(/\..+/, "")
-          .replace(/-/g, "/");
+          ?.toISOString()
+          ?.replace(/T/, " ")
+          ?.replace(/\..+/, "")
+          ?.replace(/-/g, "/");
       },
       modify_time() {
         return this.getDataValue("modify_time")
-          .toISOString()
-          .replace(/T/, " ")
-          .replace(/\..+/, "")
-          .replace(/-/g, "/");
+          ?.toISOString()
+          ?.replace(/T/, " ")
+          ?.replace(/\..+/, "")
+          ?.replace(/-/g, "/");
       },
     },
   },

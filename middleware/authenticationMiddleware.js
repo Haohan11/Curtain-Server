@@ -12,8 +12,8 @@ const authenticationMiddleware = (req, res, next) => {
     if (err) {
       return res.response(401);
     } else {
-      const { payload } = decoded
-      req._user = payload
+      const { payload: { user_account } } = decoded
+      req._user = { user_account }
       next();
     }
   });
