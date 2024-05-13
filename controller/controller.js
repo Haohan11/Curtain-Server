@@ -76,10 +76,10 @@ const makeRegularController = ({
       const tableConnection = req.app[tableName];
       const { queryAttribute = [] } = read;
 
-      const onlyEnable = queryParam2False(req.body.onlyEnable);
+      const onlyEnable = queryParam2False(req.query.onlyEnable);
       const whereOption = {
         where: {
-          ...(onlyEnable ? { enable: true } : {}),
+          ...(onlyEnable && { enable: true }),
         },
       };
 
@@ -521,11 +521,12 @@ export const StockController = {
       Stock_Environment,
     } = req.app;
 
-    const onlyEnable = queryParam2False(req.body.onlyEnable);
+    const onlyEnable = queryParam2False(req.query.onlyEnable);
+    console.log("=======================", req.query)
 
     const whereOption = {
       where: {
-        ...(onlyEnable ? { enable: true } : {}),
+        ...(onlyEnable && { enable: true }),
       },
     };
 
