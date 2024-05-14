@@ -2,7 +2,7 @@ const findStock = async (req, option) => {
   const {
     stock: Stock,
     stock_color: StockColor,
-    stockColor_colorScheme: StockColor_ColorScheme,
+    stock_color_color_scheme: StockColor_ColorScheme,
     color_scheme: ColorScheme,
     series: Series,
     supplier: Supplier,
