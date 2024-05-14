@@ -531,24 +531,48 @@ export const StockController = {
 
     try {
       const where = whereOption.where;
+      const idDict = [];
 
       req.query.colorScheme &&
-        (async () => {
+        (await (async () => {
           const colorScheme = JSON.parse(req.query.colorScheme);
-          const colorList = await StockColor_ColorScheme.findAll({
+          const colorIdList = await StockColor_ColorScheme.findAll({
             attributes: ["stock_color_id"],
-            where: colorScheme,
+            where: { color_scheme_id: colorScheme },
           });
 
-          const stockList = await StockColor.findAll({
+          const stockIdList = await StockColor.findAll({
             attributes: ["stock_id"],
             where: {
-              id: colorList.map((color) => color.stock_color_id),
+              id: colorIdList.map((color) => color.stock_color_id),
             },
           });
 
-          
-        })();
+          idDict.push([...new Set(stockIdList.map((stock) => stock.stock_id))]);
+        })());
+
+      await Promise.all(
+        Object.entries({
+          design: Stock_Design,
+          material: Stock_Material,
+        }).map(async ([name, Model]) => {
+          if (!req.query[name]) return;
+          const target = JSON.parse(req.query[name]);
+          const stockIdList = await Model.findAll({
+            attributes: ["stock_id"],
+            where: { [`${name}_id`]: target },
+          });
+
+          idDict.push(stockIdList.map((stock) => stock.stock_id));
+        })
+      );
+
+      idDict.length === 1 && (where.id = idDict[0]);
+      idDict.length === 2 &&
+        (where.id = idDict[0].filter((id) => idDict[1].includes(id)));
+      idDict.length === 3 &&
+        (where.id = idDict[0].filter((id) => idDict[1].includes(id) && idDict[2].includes(id)));
+
 
       req.query.stockName &&
         (where.name = { [Op.like]: `%${req.query.stockName}%` });
