@@ -51,7 +51,7 @@ export const UserSchema = {
     },
     // -&achor-u
     password: {
-      type: DataTypes.CHAR(60),
+      type: DataTypes.STRING(60),
       allowNull: false,
       set(value) {
         this.setDataValue("password", goHashSync(value));
@@ -85,7 +85,7 @@ export const EmployeeSchema = {
     },
     // -&achor-em
     code: {
-      type: DataTypes.CHAR(8),
+      type: DataTypes.STRING(8),
       unique: true,
     },
     // -&achor-em
@@ -94,12 +94,12 @@ export const EmployeeSchema = {
     },
     // -&achor-em
     id_code: {
-      type: DataTypes.CHAR(10),
+      type: DataTypes.STRING(10),
       allowNull: false,
     },
     // -&achor-em
     phone_number: {
-      type: DataTypes.CHAR(10),
+      type: DataTypes.STRING(10),
       allowNull: false,
     },
     // -&achor-em
@@ -109,7 +109,7 @@ export const EmployeeSchema = {
     },
     // -&achor-em
     password: {
-      type: DataTypes.CHAR(60),
+      type: DataTypes.STRING(60),
       allowNull: false,
     },
   },
@@ -129,7 +129,7 @@ export const SeriesSchema = {
   cols: {
     // -&achor-sri
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-sri
@@ -139,7 +139,7 @@ export const SeriesSchema = {
     },
     // -&achor-sri
     code: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       unique: true,
       allowNull: false,
     },
@@ -164,7 +164,7 @@ export const StockSchema = {
   cols: {
     // -&achor-st
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-st
@@ -174,7 +174,7 @@ export const StockSchema = {
     },
     // -&achor-st
     code: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-st
@@ -326,7 +326,7 @@ export const ColorNameSchema = {
   cols: {
     // -&achor-c
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-c
@@ -345,7 +345,7 @@ export const ColorSchemeSchema = {
   cols: {
     // -&achor-cs
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-cs
@@ -382,7 +382,7 @@ export const MaterialSchema = {
   cols: {
     // -&achor-m
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-m
@@ -413,7 +413,7 @@ export const DesignSchema = {
   cols: {
     // -&achor-ds
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-ds
@@ -444,7 +444,7 @@ export const SupplierSchema = {
   cols: {
     // -&achor-sri
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-sri
@@ -454,7 +454,7 @@ export const SupplierSchema = {
     },
     // -&achor-sri
     code: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       unique: true,
       allowNull: false,
     },
@@ -479,7 +479,7 @@ export const EnvironmentSchema = {
   cols: {
     // -&achor-env
     name: {
-      type: DataTypes.CHAR(15),
+      type: DataTypes.STRING(15),
       allowNull: false,
     },
     // -&achor-env
@@ -537,7 +537,7 @@ export const CombinationSchema = {
   cols: {
     // -&achor-pp
     name: {
-      type: DataTypes.CHAR(50),
+      type: DataTypes.STRING(50),
       allowNull: false,
     },
     // -&achor-pp
@@ -572,7 +572,7 @@ export const CombinationSchema = {
 
 //--------- junction schema below ---
 export const StockColor_ColorSchemeSchema = {
-  name: "stockColor_colorScheme",
+  name: "stock_color_color_scheme",
   cols: {
     stock_color_id: {
       type: DataTypes.INTEGER,
@@ -590,7 +590,7 @@ export const StockColor_ColorSchemeSchema = {
     },
   },
   option: {
-    tableName: "stockColor_colorScheme",
+    tableName: "stock_color_color_scheme",
   },
   belongsTo: [
     {

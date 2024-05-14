@@ -522,13 +522,46 @@ export const StockController = {
     } = req.app;
 
     const onlyEnable = queryParam2False(req.query.onlyEnable);
-    console.log("=======================", req.query)
 
     const whereOption = {
       where: {
         ...(onlyEnable && { enable: true }),
       },
     };
+
+    try {
+      const where = whereOption.where;
+
+      req.query.colorScheme &&
+        (async () => {
+          const colorScheme = JSON.parse(req.query.colorScheme);
+          const colorList = await StockColor_ColorScheme.findAll({
+            attributes: ["stock_color_id"],
+            where: colorScheme,
+          });
+
+          const stockList = await StockColor.findAll({
+            attributes: ["stock_id"],
+            where: {
+              id: colorList.map((color) => color.stock_color_id),
+            },
+          });
+
+          
+        })();
+
+      req.query.stockName &&
+        (where.name = { [Op.like]: `%${req.query.stockName}%` });
+
+      ["block", "absorption"].forEach((fieldName) => {
+        ["1", "2", "3", "4", "5"].includes(req.query[fieldName]) &&
+          (where[fieldName] = req.query[fieldName]);
+      });
+
+      // whereOption.where = { ...whereOption.where, ...where}
+    } catch {
+      res.response(400);
+    }
 
     try {
       const total = await Stock.count(whereOption);
