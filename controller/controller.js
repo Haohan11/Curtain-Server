@@ -119,7 +119,6 @@ const makeRegularController = ({
 
         // get id before check because checkdata will also remove data that is not in validate schema
         const { id } = req.body;
-        console.log("================", id);
         if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
 
         const validatedData = await validator(req.body);
@@ -188,42 +187,129 @@ export const SupplierController = makeRegularController({
   },
 });
 
-export const EmployeeController = makeRegularController({
-  tableName: "Employee",
-  create: {
-    async handleData(req, data) {
-      const { Employee } = req.app;
+export const EmployeeController = {
+  create: [
+    multer().none(),
+    authenticationMiddleware,
+    addUserMiddleware,
+    async (req, res) => {
+      const { Employee, User } = req.app;
 
-      const { password } = data;
+      const { validateEmployee: validator } = allValidator;
+      const validatedData = await validator({ ...req.body, ...req._user });
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { password } = validatedData;
+      // const hashedPassword = password;
       const hashedPassword = await goHash(password);
 
       const code = await generateCode(Employee);
-      if (code === false) return false;
+      if (code === false) return res.response(500);
 
-      return { ...data, password: hashedPassword, code };
+      try {
+        const { name, email } = validatedData;
+        const { id: user_id } = await User.create({
+          name,
+          account: email,
+          email,
+          password: hashedPassword,
+          ...req._user,
+        });
+
+        await Employee.create({
+          ...validatedData,
+          user_id,
+          password: hashedPassword,
+          code,
+        });
+
+        res.response(200, `Success added Employee and User.`);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        if (error.name === "SequelizeUniqueConstraintError")
+          return res.response(400, "Duplicate account.");
+        console.log(error);
+        res.response(500);
+      }
     },
-  },
-  read: {
-    queryAttribute: [
-      "id",
-      "enable",
-      "role",
-      "code",
-      "name",
-      "id_code",
-      "phone_number",
-      "email",
-    ],
-  },
-  update: {
-    async handleData(req, data) {
-      const { password } = data;
+  ],
+  read: makeRegularController({
+    tableName: "Employee",
+    read: {
+      queryAttribute: [
+        "id",
+        "enable",
+        "role",
+        "code",
+        "name",
+        "id_code",
+        "phone_number",
+        "email",
+      ],
+    },
+  })["read"],
+  update: [
+    multer().none(),
+    authenticationMiddleware,
+    addUserMiddleware,
+    async (req, res) => {
+      const { Employee, User } = req.app;
+
+      const { id } = req.body;
+      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+
+      const { validateEmployee: validator } = allValidator;
+      const validatedData = await validator({ ...req.body, ...req._user });
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { password } = validatedData;
+      // const hashedPassword = password;
       const hashedPassword = await goHash(password);
 
-      return { ...data, password: hashedPassword };
+      try {
+        const { user_id, email: oldEmail } = await Employee.findByPk(id, {
+          attributes: ["user_id", "email"],
+        });
+
+        const { name, email } = validatedData;
+        user_id !== null &&
+          (await User.update(
+            {
+              name,
+              ...(oldEmail !== email && {
+                account: email,
+              }),
+              email,
+              password: hashedPassword,
+              ...req._user,
+            },
+            {
+              where: {
+                id: user_id,
+              },
+            }
+          ));
+
+        await Employee.update(
+          { ...validatedData, password: hashedPassword },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+
+        res.response(200, `Updated Employee and User data success.`);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        if (error.name === "SequelizeUniqueConstraintError")
+          return res.response(400, "Duplicate account.");
+        console.log(error);
+        res.response(500);
+      }
     },
-  },
-});
+  ],
+};
 
 const generateCode = async (Employee) => {
   const date = new Date();
@@ -302,9 +388,6 @@ export const EnvironmentController = {
       const maskImageChanged = !!req.files["mask_image"]?.[0];
 
       try {
-        // const { env_image, mask_image} = await Environment.findByPk(id)
-        // console.log(result)
-
         await Environment.update(
           {
             ...validatedData,
@@ -571,8 +654,9 @@ export const StockController = {
       idDict.length === 2 &&
         (where.id = idDict[0].filter((id) => idDict[1].includes(id)));
       idDict.length === 3 &&
-        (where.id = idDict[0].filter((id) => idDict[1].includes(id) && idDict[2].includes(id)));
-
+        (where.id = idDict[0].filter(
+          (id) => idDict[1].includes(id) && idDict[2].includes(id)
+        ));
 
       req.query.stockName &&
         (where.name = { [Op.like]: `%${req.query.stockName}%` });

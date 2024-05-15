@@ -59,7 +59,7 @@ app.post("/login", async function (req, res) {
         if (!user) {
           return res.response(404, "帳號錯誤");
         }
-        const isPasswordCorrect = bcrypt.compareSync(password,user.password);
+        const isPasswordCorrect = bcrypt.compareSync(password, user.password);
         if (!isPasswordCorrect) {
           return res.response(403, "密碼錯誤");
         }

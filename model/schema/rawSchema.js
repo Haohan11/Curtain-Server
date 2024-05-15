@@ -53,9 +53,9 @@ export const UserSchema = {
     password: {
       type: DataTypes.STRING(60),
       allowNull: false,
-      set(value) {
-        this.setDataValue("password", goHashSync(value));
-      },
+      // set(value) {
+      //   this.setDataValue("password", goHashSync(value));
+      // },
     },
   },
   option: {
@@ -111,6 +111,10 @@ export const EmployeeSchema = {
     password: {
       type: DataTypes.STRING(60),
       allowNull: false,
+    },
+    // -&achor-em
+    user_id: {
+      type: DataTypes.INTEGER,
     },
   },
   option: {
