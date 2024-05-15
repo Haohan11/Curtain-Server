@@ -1015,6 +1015,9 @@ export const CombinationController = {
           offset: begin,
           limit: size,
           attributes: ["id", "name", "environment_id", "create_time"],
+          where: {
+            user_id,
+          },
         });
 
         const list = await Promise.all(
