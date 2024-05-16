@@ -438,6 +438,7 @@ export const StockController = {
 
       const validatedData = await validator({
         ...req.body,
+        ...req._user,
         series_id: req.body.series,
         supplier_id: not0Falsy2Undefined(req.body.supplier),
       });
