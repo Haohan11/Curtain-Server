@@ -16,9 +16,6 @@ import {
   queryParam2False,
 } from "../model/helper.js";
 
-import authenticationMiddleware from "../middleware/authenticationMiddleware.js";
-import addUserMiddleware from "../middleware/addUser.js";
-
 const uploadStockImage = createUploadImage("stock");
 const uploadEnvImage = createUploadImage("env");
 
@@ -55,7 +52,7 @@ const makeRegularController = ({
         const tableConnection = req.app[tableName];
         const { handleData = (req, data) => data } = create;
 
-        const validatedData = await validator(req.body);
+        const validatedData = await validator({...req.body, ...req._user});
         if (validatedData === false)
           return res.response(400, "Invalid format.");
 
@@ -121,7 +118,7 @@ const makeRegularController = ({
         const { id } = req.body;
         if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
 
-        const validatedData = await validator(req.body);
+        const validatedData = await validator({...req.body, ...req._user});
         if (validatedData === false)
           return res.response(400, "Invalid format.");
 
@@ -190,8 +187,6 @@ export const SupplierController = makeRegularController({
 export const EmployeeController = {
   create: [
     multer().none(),
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       const { Employee, User } = req.app;
 
@@ -200,7 +195,6 @@ export const EmployeeController = {
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       const { password } = validatedData;
-      // const hashedPassword = password;
       const hashedPassword = await goHash(password);
 
       const code = await generateCode(Employee);
@@ -250,8 +244,6 @@ export const EmployeeController = {
   })["read"],
   update: [
     multer().none(),
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       const { Employee, User } = req.app;
 
@@ -263,7 +255,6 @@ export const EmployeeController = {
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       const { password } = validatedData;
-      // const hashedPassword = password;
       const hashedPassword = await goHash(password);
 
       try {
@@ -351,7 +342,7 @@ export const EnvironmentController = {
       const { Environment } = req.app;
 
       const { validateEnvironment: validator } = allValidator;
-      const validatedData = await validator(req.body);
+      const validatedData = await validator({...req.body, ...req._user});
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       try {
@@ -375,7 +366,7 @@ export const EnvironmentController = {
       const { Environment } = req.app;
 
       const { validateEnvironment: validator } = allValidator;
-      const validatedData = await validator(req.body);
+      const validatedData = await validator({...req.body, ...req._user});
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       const { id } = req.body;
@@ -453,7 +444,7 @@ export const StockController = {
 
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const { create_name, create_id, modify_name, modify_id } = req._user;
       const author = { create_name, create_id, modify_name, modify_id };
 
       const result = {
@@ -828,6 +819,7 @@ export const StockController = {
 
       const validatedData = await validator({
         ...req.body,
+        ...req._user,
         series_id: req.body.series,
         supplier_id: not0Falsy2Undefined(JSON.parse(req.body.supplier)),
       });
@@ -837,7 +829,7 @@ export const StockController = {
       const { id: stockId } = req.body;
       if (isNaN(parseInt(stockId))) return res.response(400, "Invalid id.");
 
-      const { create_name, create_id, modify_name, modify_id } = req.body;
+      const { create_name, create_id, modify_name, modify_id } = req._user;
       const author = { create_name, create_id, modify_name, modify_id };
 
       const result = { message: "success updated: " };
@@ -1027,8 +1019,6 @@ export const StockController = {
 export const CombinationController = {
   create: [
     multer().none(),
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       const { Combination, Combination_Stock } = req.app;
 
@@ -1078,8 +1068,6 @@ export const CombinationController = {
     },
   ],
   read: [
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       const { Combination, Combination_Stock, Environment } = req.app;
       const { user_id } = req._user;
@@ -1155,8 +1143,6 @@ export const CombinationController = {
   ],
   update: [
     multer().none(),
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       // return res.response(200, {...req.body, ...req._user})
       const { Combination, Combination_Stock } = req.app;
@@ -1216,8 +1202,6 @@ export const CombinationController = {
   ],
   delete: [
     multer().none(),
-    authenticationMiddleware,
-    addUserMiddleware,
     async (req, res) => {
       const { Combination } = req.app;
       const id = parseInt(req.body.id);

@@ -87,13 +87,13 @@ app.post("/login", async function (req, res) {
 });
 
 // jwt token authentication
-// app.use(authenticationMiddleware);
+app.use(authenticationMiddleware);
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
 app.use(establishAssociation);
 
-// app.use(addUserMiddleware);
+app.use(addUserMiddleware);
 
 app.use("/employee", EmployeeRouter);
 app.use("/series", SeriesRouter);
