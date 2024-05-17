@@ -1,4 +1,5 @@
 import express from "express";
+// import dotenv from "dotenv";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -68,7 +69,7 @@ app.post("/login", async function (req, res) {
           user_account: account,
           user_password: password
         };
-        const exp = Math.floor(Date.now() / 1000) + (60 * 60)
+        const exp = Math.floor(Date.now() / 1000) + (parseInt(process.env.EXPIRE_TIME) || 6)
         const token = jwt.sign({ payload, exp }, 'my_secret_key');
 
         res.response(200, { 
