@@ -416,6 +416,7 @@ export const EnvironmentController = {
         "mask_image",
         "cropline",
         "comment",
+        "width",
       ],
     },
   })["read"],

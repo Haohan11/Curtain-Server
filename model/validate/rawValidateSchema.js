@@ -32,6 +32,7 @@ export const validateSeriesSchema = {
 export const validateEnvironmentSchema = {
   enable: Yup.boolean(),
   name: Yup.string().max(30).required(),
+  width: Yup.string(),
   cropline: Yup.string().required(),
   comment: Yup.string(),
 };
