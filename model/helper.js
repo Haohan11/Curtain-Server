@@ -183,9 +183,15 @@ export const transFilePath = (path) => {
 };
 
 export const queryParam2False = (target) =>
-  !(target === undefined || target === "false")
-;
+  !(target === undefined || target === "false");
 
 export const filePathAppend = (path) => `${staticPathName}/${path}`;
 
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
+
+export const formatTime = (time) =>
+  time
+    ?.toISOString()
+    ?.replace(/T/, " ")
+    ?.replace(/\..+/, "")
+    ?.replace(/-/g, "/");

@@ -14,6 +14,7 @@ import {
   transFilePath,
   filePathAppend,
   queryParam2False,
+  formatTime,
 } from "../model/helper.js";
 
 const uploadStockImage = createUploadImage("stock");
@@ -52,7 +53,7 @@ const makeRegularController = ({
         const tableConnection = req.app[tableName];
         const { handleData = (req, data) => data } = create;
 
-        const validatedData = await validator({...req.body, ...req._user});
+        const validatedData = await validator({ ...req.body, ...req._user });
         if (validatedData === false)
           return res.response(400, "Invalid format.");
 
@@ -118,7 +119,7 @@ const makeRegularController = ({
         const { id } = req.body;
         if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
 
-        const validatedData = await validator({...req.body, ...req._user});
+        const validatedData = await validator({ ...req.body, ...req._user });
         if (validatedData === false)
           return res.response(400, "Invalid format.");
 
@@ -342,7 +343,7 @@ export const EnvironmentController = {
       const { Environment } = req.app;
 
       const { validateEnvironment: validator } = allValidator;
-      const validatedData = await validator({...req.body, ...req._user});
+      const validatedData = await validator({ ...req.body, ...req._user });
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       try {
@@ -366,7 +367,7 @@ export const EnvironmentController = {
       const { Environment } = req.app;
 
       const { validateEnvironment: validator } = allValidator;
-      const validatedData = await validator({...req.body, ...req._user});
+      const validatedData = await validator({ ...req.body, ...req._user });
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       const { id } = req.body;
@@ -604,6 +605,7 @@ export const StockController = {
       },
     };
 
+    // handle filter
     try {
       const where = whereOption.where;
       const idDict = [];
@@ -642,13 +644,15 @@ export const StockController = {
         })
       );
 
-      idDict.length === 1 && (where.id = idDict[0]);
-      idDict.length === 2 &&
-        (where.id = idDict[0].filter((id) => idDict[1].includes(id)));
-      idDict.length === 3 &&
-        (where.id = idDict[0].filter(
-          (id) => idDict[1].includes(id) && idDict[2].includes(id)
-        ));
+      idDict.length > 0 &&
+        idDict.length <= 3 &&
+        (where.id = {
+          1: idDict[0],
+          2: idDict[0].filter((id) => idDict[1].includes(id)),
+          3: idDict[0].filter(
+            (id) => idDict[1].includes(id) && idDict[2].includes(id)
+          ),
+        }[idDict.length]);
 
       req.query.stockName &&
         (where.name = { [Op.like]: `%${req.query.stockName}%` });
@@ -658,9 +662,8 @@ export const StockController = {
           (where[fieldName] = req.query[fieldName]);
       });
 
-      // whereOption.where = { ...whereOption.where, ...where}
     } catch {
-      res.response(400);
+      return res.response(400);
     }
 
     try {
@@ -670,7 +673,7 @@ export const StockController = {
         total,
       });
 
-      const stockList = await Stock.findAll({
+      const stockList = (await Stock.findAll({
         offset: begin,
         limit: size,
         attributes: [
@@ -686,8 +689,9 @@ export const StockController = {
           "create_time",
         ],
         ...whereOption,
+        order: [["create_time", "DESC"]],
         raw: true,
-      });
+      })).map(stock => ({...stock, create_time: formatTime(stock.create_time)}) );
 
       const MDEdict = {
         material: [Material, Stock_Material],
@@ -779,7 +783,7 @@ export const StockController = {
         })
       );
 
-      return res.response(200, {
+      res.response(200, {
         start,
         size,
         begin,
@@ -1091,6 +1095,7 @@ export const CombinationController = {
           where: {
             user_id,
           },
+          order: [["create_time", "DESC"]],
         });
 
         const list = await Promise.all(
