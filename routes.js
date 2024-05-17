@@ -66,6 +66,12 @@ const tablesDependencies = {
       "Stock",
     ],
   },
+  Account: {
+    tableName: "Account",
+    connectMiddlewares: [
+      "Employee",
+    ],
+  },
 };
 
 const Routers = Object.entries(tablesDependencies).reduce(

@@ -17,6 +17,7 @@ const {
   StockRouter,
   ColorNameRouter,
   CombinationRouter,
+  AccountRouter,
 } = Routers;
 
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
@@ -106,6 +107,7 @@ app.use("/supplier", SupplierRouter);
 app.use("/stock", StockRouter);
 app.use("/color-name", ColorNameRouter);
 app.use("/combination", CombinationRouter);
+app.use("/account", AccountRouter);
 
 app.post("/logout", async function (req, res) {
   try {

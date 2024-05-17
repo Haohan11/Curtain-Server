@@ -336,6 +336,30 @@ const padding = (num, digits) => {
   return str;
 };
 
+export const AccountController = {
+  read: [
+    async (req, res) => {
+      const { Employee } = req.app;
+      const { user_id } = req._user;
+
+      try {
+        const employee = await Employee.findOne({
+          attributes: ["code", "email", "phone_number", "name"],
+          where: {
+            user_id,
+          },
+        });
+
+        res.response(200, employee);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
+};
+
 export const EnvironmentController = {
   create: [
     uploadEnvImage.fields([{ name: "env_image" }, { name: "mask_image" }]),
