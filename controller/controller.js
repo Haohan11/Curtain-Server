@@ -370,8 +370,23 @@ export const EnvironmentController = {
       const validatedData = await validator({ ...req.body, ...req._user });
       if (validatedData === false) return res.response(400, "Invalid format.");
 
-      const { id } = req.body;
-      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+      const id = parseInt(req.body.id);
+      if (isNaN(id)) return res.response(400, "Invalid id.");
+
+      const { count: enableCount, rows: enableEnvList } =
+        await Environment.findAndCountAll({
+          where: {
+            enable: true,
+          },
+        });
+
+      if (
+        enableCount === 1 &&
+        enableEnvList.map((item) => item.id).includes(id) &&
+        !validatedData.enable
+      ) {
+        return res.response(403, "NotAllowDisableAll");
+      }
 
       delete validatedData.env_image;
       delete validatedData.mask_image;
@@ -383,18 +398,14 @@ export const EnvironmentController = {
         await Environment.update(
           {
             ...validatedData,
-            ...(envImageChanged
-              ? {
-                  env_image_name: req.files["env_image"][0].originalname,
-                  env_image: transFilePath(req.files["env_image"][0].path),
-                }
-              : {}),
-            ...(maskImageChanged
-              ? {
-                  mask_image_name: req.files["mask_image"][0].originalname,
-                  mask_image: transFilePath(req.files["mask_image"][0].path),
-                }
-              : {}),
+            ...(envImageChanged && {
+              env_image_name: req.files["env_image"][0].originalname,
+              env_image: transFilePath(req.files["env_image"][0].path),
+            }),
+            ...(maskImageChanged && {
+              mask_image_name: req.files["mask_image"][0].originalname,
+              mask_image: transFilePath(req.files["mask_image"][0].path),
+            }),
           },
           { where: { id } }
         );
@@ -662,7 +673,6 @@ export const StockController = {
         ["1", "2", "3", "4", "5"].includes(req.query[fieldName]) &&
           (where[fieldName] = req.query[fieldName]);
       });
-
     } catch {
       return res.response(400);
     }
@@ -674,25 +684,30 @@ export const StockController = {
         total,
       });
 
-      const stockList = (await Stock.findAll({
-        offset: begin,
-        limit: size,
-        attributes: [
-          "id",
-          "enable",
-          "code",
-          "name",
-          "series_id",
-          "supplier_id",
-          "block",
-          "absorption",
-          "description",
-          "create_time",
-        ],
-        ...whereOption,
-        order: [["create_time", "DESC"]],
-        raw: true,
-      })).map(stock => ({...stock, create_time: formatTime(stock.create_time)}) );
+      const stockList = (
+        await Stock.findAll({
+          offset: begin,
+          limit: size,
+          attributes: [
+            "id",
+            "enable",
+            "code",
+            "name",
+            "series_id",
+            "supplier_id",
+            "block",
+            "absorption",
+            "description",
+            "create_time",
+          ],
+          ...whereOption,
+          order: [["create_time", "DESC"]],
+          raw: true,
+        })
+      ).map((stock) => ({
+        ...stock,
+        create_time: formatTime(stock.create_time),
+      }));
 
       const MDEdict = {
         material: [Material, Stock_Material],
