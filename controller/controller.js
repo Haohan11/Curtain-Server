@@ -680,15 +680,13 @@ export const StockController = {
         })
       );
 
-      idDict.length > 0 &&
-        idDict.length <= 3 &&
-        (where.id = {
-          1: idDict[0],
-          2: idDict[0].filter((id) => idDict[1].includes(id)),
-          3: idDict[0].filter(
-            (id) => idDict[1].includes(id) && idDict[2].includes(id)
-          ),
-        }[idDict.length]);
+      idDict.length === 1 && (where.id = idDict[0]);
+      idDict.length === 2 &&
+        (where.id = idDict[0].filter((id) => idDict[1].includes(id)));
+      idDict.length === 3 &&
+        (where.id = idDict[0].filter(
+          (id) => idDict[1].includes(id) && idDict[2].includes(id)
+        ));
 
       req.query.stockName &&
         (where.name = { [Op.like]: `%${req.query.stockName}%` });
