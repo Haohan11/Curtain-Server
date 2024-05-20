@@ -358,6 +358,53 @@ export const AccountController = {
       }
     },
   ],
+  update: [
+    multer().none(),
+    async (req, res) => {
+      const { Employee, User } = req.app;
+      const { user_id } = req._user;
+      const { validateEmployee: validator } = allValidator;
+      const validatedData = await validator({ ...req.body, ...req._user });
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { id_code, email, name, phone_number, password } = validatedData;
+      const hashedPassword = await goHash(password);
+
+      const { email: oldEmail } = await Employee.findOne({
+        attributes: ["user_id", "email"],
+        where: { user_id },
+      });
+
+      try {
+        await Employee.update(
+          { ...validatedData, password: hashedPassword },
+          { where: { user_id } }
+        );
+        await User.update(
+          {
+            name,
+            id_code,
+            ...(oldEmail !== email && {
+              account: email,
+            }),
+            phone_number,
+            email,
+            password: hashedPassword,
+            ...req._user,
+          },
+          {
+            where: { id: user_id },
+          }
+        );
+
+        res.response(200);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
 };
 
 export const EnvironmentController = {
