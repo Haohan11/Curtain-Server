@@ -1,8 +1,11 @@
 import express from "express";
-// import dotenv from "dotenv";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import multer from "multer";
+import dotenv from "dotenv";
+import nodemailer from "nodemailer";
+import session from "express-session";
 
 import { Routers } from "./routes.js";
 
@@ -32,6 +35,8 @@ import connectToDataBase from "./model/connectToDatabase.js";
 import Schemas from "./model/schema/schema.js";
 import createSchema from "./model/createSchema.js";
 
+dotenv.config();
+
 const app = express();
 
 app.use(cors());
@@ -40,6 +45,15 @@ app.use(express.static(staticPathName));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+app.use(
+  session({
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true },
+  })
+);
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
@@ -55,9 +69,9 @@ app.post("/login", async function (req, res) {
     sequelize.sync().then(() => {
       User.findOne({
         where: {
-          account: account
-        }
-      }).then(user => {
+          account: account,
+        },
+      }).then((user) => {
         if (!user) {
           return res.response(404, "帳號錯誤");
         }
@@ -68,17 +82,19 @@ app.post("/login", async function (req, res) {
 
         const payload = {
           user_account: account,
-          user_password: password
+          user_password: password,
         };
-        const exp = Math.floor(Date.now() / 1000) + (parseInt(process.env.EXPIRE_TIME) || 3600);
-        const token = jwt.sign({ payload, exp }, 'my_secret_key');
+        const exp =
+          Math.floor(Date.now() / 1000) +
+          (parseInt(process.env.EXPIRE_TIME) || 3600);
+        const token = jwt.sign({ payload, exp }, "my_secret_key");
 
-        res.response(200, { 
-          "id": user.id,
-          "name": user.name,
-          "token": token,
-          'token_type': 'bearer',
-          "_exp": exp,     
+        res.response(200, {
+          id: user.id,
+          name: user.name,
+          token: token,
+          token_type: "bearer",
+          _exp: exp,
         });
       });
     });
@@ -86,6 +102,58 @@ app.post("/login", async function (req, res) {
     console.log(error);
     res.response(500, { error });
   }
+});
+
+app.post("/sendmail", multer().none(), async (req, res) => {
+  const { UserSchema, MailAuthCode } = Schemas;
+
+  const sequelize = await connectToDataBase();
+  const User = createSchema(sequelize, UserSchema);
+
+  const { email } = req.body;
+
+  const result = await User.findOne({
+    where: {
+      account: email,
+    },
+  });
+
+  if (result === null) return res.response(400, "NoEmail");
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_ACCOUNT,
+      pass: process.env.GMAIL_PASSWORD,
+    },
+  });
+
+  await transporter.verify();
+
+  const auth_code = Math.floor(Math.random() * 9000 + 1000)
+
+  const mailOptions = {
+    from: process.env.GMAIL_ACCOUNT,
+    to: email,
+    subject: "翔宇窗飾 - 重設密碼驗證碼",
+    html: `
+      <div style="display: flex; align-items: center; flex-direction: column">
+        <h2>請使用以下驗證碼進行密碼重新設定</h2>
+        <div style="background: #efefef;padding: 25px; align-self: stretch; border-radius: 3px; color: #555; font-weight: bold; text-align: center;">
+          <p style="padding: 0; margin: 0">你的驗證碼</p>
+          <div style="margin-inline: auto;padding: 20px 100px; border-radius: 5px; margin-top: 10px; background: white; width: fit-content">${auth_code}</div>
+        </div>
+      </div>`,
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      return res.response(500);
+    }
+
+    (req.session.auth_code = Math.floor(Math.random() * 9000 + 1000)),
+      res.response(200, "Success sent email.");
+  });
 });
 
 // jwt token authentication

@@ -572,6 +572,32 @@ export const CombinationSchema = {
   },
 };
 
+export const MailAuthCodeSchema = {
+  name: "mailauthcode",
+  cols: {
+    // -&achor-mac
+    expire: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    // -&achor-mac
+    auth_code: {
+      type: DataTypes.STRING(4),
+      allowNull: false,
+    },
+    // -&achor-mac
+    email: {
+      type: DataTypes.STRING,
+      validate:{
+        isEmail: true
+      }
+    }
+  },
+  option: {
+    tableName: "mailauthcode",
+  },
+}
+
 //--------- normal Schemas above ---
 
 //--------- junction schema below ---

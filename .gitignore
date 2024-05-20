@@ -7,3 +7,5 @@ connect_info.json
 # vscode
 .vscode/
 *.code-workspace
+
+/secret
