@@ -69,7 +69,7 @@ const tablesDependencies = {
   Account: {
     tableName: "Account",
     connectMiddlewares: [
-      "Employee",
+      "Employee","User"
     ],
   },
 };
