@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 import findStock from "./findStock.js";
 
@@ -116,8 +116,8 @@ const makeRegularController = ({
         const { handleData = (req, data) => data } = update;
 
         // get id before check because checkdata will also remove data that is not in validate schema
-        const { id } = req.body;
-        if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+        const id = parseInt(req.body.id);
+        if (isNaN(id)) return res.response(400, "Invalid id.");
 
         const validatedData = await validator({ ...req.body, ...req._user });
         if (validatedData === false)
@@ -157,12 +157,56 @@ export const ColorSchemeController = makeRegularController({
   },
 });
 
-export const ColorNameController = makeRegularController({
-  tableName: "ColorName",
-  read: {
-    queryAttribute: ["id", "enable", "name"],
-  },
-});
+export const ColorNameController = (() => {
+  const { create, read } = makeRegularController({
+    tableName: "ColorName",
+    read: {
+      queryAttribute: ["id", "enable", "name"],
+    },
+  });
+
+  const update = [
+    multer().none(),
+    async (req, res) => {
+      const { ColorName, StockColor } = req.app;
+
+      // get id before check because checkdata will also remove data that is not in validate schema
+      const id = parseInt(req.body.id);
+      if (isNaN(id)) return res.response(400, "Invalid id.");
+
+      const { validateColorName: validator } = allValidator;
+
+      const colorNameData = await validator({ ...req.body, ...req._user });
+      if (colorNameData === false) return res.response(400, "Invalid format.");
+
+      try {
+        await ColorName.update(colorNameData, {
+          where: {
+            id,
+          },
+        });
+
+        const { name, modify_id, modify_name } = colorNameData;
+        await StockColor.update(
+          { name, modify_id, modify_name },
+          {
+            where: {
+              color_name_id: id,
+            },
+          }
+        );
+
+        res.response(200, `Updated ${tableName} data success.`);
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ];
+
+  return { create, read, update };
+})();
 
 export const DesignController = makeRegularController({
   tableName: "Design",

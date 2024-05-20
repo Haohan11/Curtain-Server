@@ -13,7 +13,7 @@ const tablesDependencies = {
   },
   ColorName: {
     tableName: "ColorName",
-    connectMiddlewares: ["ColorName"],
+    connectMiddlewares: ["StockColor", "ColorName"],
   },
   ColorScheme: {
     tableName: "ColorScheme",
