@@ -182,16 +182,10 @@ export const transFilePath = (path) => {
   return path.replace(staticPathName, "");
 };
 
-export const queryParam2False = (target) =>
-  !(target === undefined || target === "false");
+export const queryParam2False = (target) => !(target === undefined || target === "false");
 
 export const filePathAppend = (path) => `${staticPathName}/${path}`;
 
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
 
-export const formatTime = (time) =>
-  time
-    ?.toISOString()
-    ?.replace(/T/, " ")
-    ?.replace(/\..+/, "")
-    ?.replace(/-/g, "/");
+export const formatTime = (time) => time?.toISOString()?.replace(/T/, " ")?.replace(/\..+/, "")?.replace(/-/g, "/");

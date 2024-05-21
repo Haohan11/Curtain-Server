@@ -5,7 +5,6 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
-import session from "express-session";
 
 import { Routers } from "./routes.js";
 
@@ -26,6 +25,7 @@ const {
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
 import responseMiddleware from "./middleware/responseMiddleware.js";
 import authenticationMiddleware from "./middleware/authenticationMiddleware.js";
+import authResetMiddleware from "./middleware/authResetMiddleware.js";
 import addUserMiddleware from "./middleware/addUser.js";
 import notFoundResponse from "./middleware/404reponse.js";
 import establishAssociation from "./middleware/establishAssociation.js";
@@ -45,15 +45,6 @@ app.use(express.static(staticPathName));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-app.use(
-  session({
-    secret: "keyboard cat",
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: true },
-  })
-);
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
@@ -105,10 +96,20 @@ app.post("/login", async function (req, res) {
 });
 
 app.post("/sendmail", multer().none(), async (req, res) => {
-  const { UserSchema, MailAuthCode } = Schemas;
+  const { UserSchema, MailAuthCodeSchema } = Schemas;
 
   const sequelize = await connectToDataBase();
   const User = createSchema(sequelize, UserSchema);
+  const MailAuthCode = createSchema(sequelize, MailAuthCodeSchema);
+
+  await sequelize.sync();
+
+  const systemAuthor = {
+    create_id: "system",
+    create_name: "system",
+    modify_id: "system",
+    modify_name: "system",
+  };
 
   const { email } = req.body;
 
@@ -120,48 +121,133 @@ app.post("/sendmail", multer().none(), async (req, res) => {
 
   if (result === null) return res.response(400, "NoEmail");
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_ACCOUNT,
-      pass: process.env.GMAIL_PASSWORD,
-    },
-  });
-
-  await transporter.verify();
-
-  const auth_code = Math.floor(Math.random() * 9000 + 1000)
-
-  const mailOptions = {
-    from: process.env.GMAIL_ACCOUNT,
-    to: email,
-    subject: "翔宇窗飾 - 重設密碼驗證碼",
-    html: `
-      <div style="display: flex; align-items: center; flex-direction: column">
-        <h2>請使用以下驗證碼進行密碼重新設定</h2>
-        <div style="background: #efefef;padding: 25px; align-self: stretch; border-radius: 3px; color: #555; font-weight: bold; text-align: center;">
-          <p style="padding: 0; margin: 0">你的驗證碼</p>
-          <div style="margin-inline: auto;padding: 20px 100px; border-radius: 5px; margin-top: 10px; background: white; width: fit-content">${auth_code}</div>
-        </div>
-      </div>`,
+  const getAuthCode = async () => {
+    const authCode = Math.floor(Math.random() * 9000 + 1000);
+    const isExist = await MailAuthCode.findOne({
+      attribute: ["id"],
+      where: { auth_code: authCode, expire: false },
+    });
+    return isExist === null ? authCode : await getAuthCode();
   };
 
-  transporter.sendMail(mailOptions, (err, info) => {
-    if (err) {
-      return res.response(500);
-    }
+  const exp = (process.env.MAIL_EXPIRE_TIME ?? 600) * 1000;
 
-    (req.session.auth_code = Math.floor(Math.random() * 9000 + 1000)),
-      res.response(200, "Success sent email.");
-  });
+  try {
+    const auth_code = await getAuthCode();
+    const { id } = await MailAuthCode.create({
+      name: email,
+      auth_code,
+      expire_time: Date.now() + exp,
+      email,
+      ...systemAuthor,
+    });
+    const setExpire = async () =>
+      await MailAuthCode.update(
+        { expire: true, ...systemAuthor },
+        { where: { id } }
+      );
+
+    const timerId = setTimeout(setExpire, exp);
+
+    const mailOptions = {
+      from: process.env.GMAIL_ACCOUNT,
+      to: email,
+      subject: "翔宇窗飾 - 重設密碼驗證碼",
+      html: `
+      <div>
+        <div style="width: 50%; min-width: 550px; max-width: 650px; background: #efefef;padding: 25px; border-radius: 3px; color: #555; font-weight: bold; text-align: center;">
+          <h2>您好，請使用以下驗證碼進行密碼重新設定</h2>
+          <p>你的驗證碼</p>
+          <div style="width: 50%; margin: auto; padding: 20px 100px; border-radius: 5px; margin-top: 10px; background: white; font-size: 34px">${auth_code}</div>
+          <p>請於十分鐘內設定完成</p>
+        </div>
+      </div>`,
+    };
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_ACCOUNT,
+        pass: process.env.GMAIL_PASSWORD,
+      },
+    });
+
+    await transporter.verify();
+
+    transporter.sendMail(mailOptions, async (err, info) => {
+      if (err) {
+        clearTimeout(timerId);
+        await setExpire();
+        return res.response(500);
+      }
+
+      return res.response(200, "Success sent email.");
+    });
+  } catch (err) {
+    console.log(err);
+    return res.response(500);
+  }
 });
 
-// jwt token authentication
-app.use(authenticationMiddleware);
+app.post("/authcodecheck", multer().none(), async (req, res) => {
+  try {
+    const { auth_code } = req.body;
+
+    const { MailAuthCodeSchema } = Schemas;
+
+    const sequelize = await connectToDataBase();
+    const MailAuthCode = createSchema(sequelize, MailAuthCodeSchema);
+
+    await sequelize.sync();
+
+    const emailData = await MailAuthCode.findOne({
+      attribute: ["email"],
+      where: {
+        auth_code,
+        expire: false,
+      },
+    });
+
+    if (emailData === null) return res.response(403, "WrongAuthCode");
+
+    const payload = {
+      user_account: emailData.email,
+    };
+    const exp =
+      Math.floor(Date.now() / 1000) +
+      (parseInt(process.env.MAIL_EXPIRE_TIME) || 600);
+    const token = jwt.sign({ payload, exp }, "reset_secret_key");
+
+    res.response(200, {
+      email: emailData.email,
+      token: token,
+      auth_code: auth_code,
+      token_type: "bearer",
+      _exp: exp,
+    });
+  } catch (error) {
+    console.log(error);
+    res.response(500, { error });
+  }
+});
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
 app.use(establishAssociation);
+
+app.post(
+  "/resetpassword",
+  multer().none(),
+  authResetMiddleware,
+  addUserMiddleware,
+  async (req, res) => {
+    const { user_account } = req._user;
+    res.response(200, user_account)
+  }
+);
+
+// jwt token authentication
+app.use(authenticationMiddleware);
 
 app.use(addUserMiddleware);
 

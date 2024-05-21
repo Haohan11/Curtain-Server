@@ -576,9 +576,14 @@ export const MailAuthCodeSchema = {
   name: "mailauthcode",
   cols: {
     // -&achor-mac
-    expire: {
+    expire_time: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    // -&achor-mac
+    expire: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
     // -&achor-mac
     auth_code: {
