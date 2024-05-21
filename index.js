@@ -6,6 +6,8 @@ import multer from "multer";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
+import { goHash } from "./model/helper.js"
+
 import { Routers } from "./routes.js";
 
 const {
@@ -241,8 +243,24 @@ app.post(
   authResetMiddleware,
   addUserMiddleware,
   async (req, res) => {
+    const { user: User, employee: Employee } = req.app.sequelize.models
     const { user_account } = req._user;
-    res.response(200, user_account)
+    const password = req.body.password;
+
+    const hashedPassword = await goHash(password)
+    await User.update({password: hashedPassword, ...req._user}, {
+      where: {
+        account: user_account
+      }
+    })
+
+     await Employee.update({password: hashedPassword, ...req._user}, {
+      where: {
+        email: user_account
+      }
+    })
+
+    res.response(200, "Success change password.")
   }
 );
 
