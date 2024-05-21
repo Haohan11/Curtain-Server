@@ -73,13 +73,77 @@ const makeRegularController = ({
     read: async (req, res) => {
       const tableConnection = req.app[tableName];
       const { queryAttribute = [] } = read;
+      queryAttribute.includes("create_time") ||
+        queryAttribute.push("create_time");
+      const keywordArray = [
+        {
+          name: { [Op.like]: `%${req.query.keyword}%` },
+        },
+        {
+          code: { [Op.like]: `%${req.query.keyword}%` },
+        },
+        {
+          email: { [Op.like]: `%${req.query.keyword}%` },
+        },
+        {
+          id_code: { [Op.like]: `%${req.query.keyword}%` },
+        },
+        {
+          phone_number: { [Op.like]: `%${req.query.keyword}%` },
+        },
+      ];
 
+      const opArray = keywordArray.filter((item) =>
+        queryAttribute.includes(Object.keys(item)[0])
+      );
+
+      // console.log("===================");
+      // console.log("===================");
+      // console.log("===================");
+      // console.log("opArray", opArray);
+      // console.log("req query", req.query);
+      // console.log("queryAttribute", queryAttribute);
+      // console.log("===================");
+      // console.log("===================");
+      // console.log("===================");
       const onlyEnable = queryParam2False(req.query.onlyEnable);
+      const onlyDisable = queryParam2False(req.query.onlyDisable);
+
       const whereOption = {
         where: {
           ...(onlyEnable && { enable: true }),
+          ...(onlyDisable && { enable: false }),
+          ...(req.query.keyword && {
+            [Op.or]: opArray,
+          }),
         },
       };
+
+      whereOption.where;
+
+      // console.log("req.query.sort", req.query.sort);
+      // console.log("req.query.item", req.query.item);
+
+      const createSort =
+        (req.query.sort === "undefined" || req.query.sort === "")
+          ? []
+          : ["create_time", req.query.sort];
+      const nameSort =
+       ( req.query.item === "undefined" || req.query.item === "")
+          ? []
+          : ["name", req.query.item];
+
+      // const sortArray = [createSort, nameSort];
+
+      // console.log("createSort", createSort);
+      // console.log("nameSort", nameSort);
+      // console.log("sortArray", sortArray);
+
+      const filterArray = sortArray.filter((item) =>
+        queryAttribute.includes(item[0])
+      );
+
+      // console.log("legal?", filterArray);
 
       try {
         const total = await tableConnection.count(whereOption);
@@ -93,6 +157,7 @@ const makeRegularController = ({
           limit: size,
           attributes: queryAttribute,
           ...whereOption,
+          order: filterArray,
         });
 
         return res.response(200, {
@@ -732,6 +797,11 @@ export const StockController = {
       },
     };
 
+    console.log('res.query.keyword',req.query);
+    console.log('res.query.keyword',req.query);
+    console.log('res.query.keyword',req.query);
+    console.log('res.query.keyword',req.query);
+
     // handle filter
     try {
       const where = whereOption.where;
@@ -796,6 +866,7 @@ export const StockController = {
         ...req.query,
         total,
       });
+      console.log('where option',whereOption);
 
       const stockList = (
         await Stock.findAll({
