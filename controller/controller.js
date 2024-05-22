@@ -96,16 +96,6 @@ const makeRegularController = ({
       const opArray = keywordArray.filter((item) =>
         queryAttribute.includes(Object.keys(item)[0])
       );
-
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("opArray", opArray);
-      // console.log("req query", req.query);
-      // console.log("queryAttribute", queryAttribute);
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("===================");
       const onlyEnable = queryParam2False(req.query.onlyEnable);
       const onlyDisable = queryParam2False(req.query.onlyDisable);
 
@@ -118,32 +108,24 @@ const makeRegularController = ({
           }),
         },
       };
-
-      whereOption.where;
-
-      // console.log("req.query.sort", req.query.sort);
-      // console.log("req.query.item", req.query.item);
-
       const createSort =
-        (req.query.sort === "undefined" || req.query.sort === "")
+        req.query.sort === undefined ||
+        req.query.sort === "undefined" ||
+        req.query.sort === ""
           ? []
           : ["create_time", req.query.sort];
       const nameSort =
-       ( req.query.item === "undefined" || req.query.item === "")
+        req.query.item === undefined ||
+        req.query.item === "undefined" ||
+        req.query.item === ""
           ? []
           : ["name", req.query.item];
 
-      // const sortArray = [createSort, nameSort];
-
-      // console.log("createSort", createSort);
-      // console.log("nameSort", nameSort);
-      // console.log("sortArray", sortArray);
+      const sortArray = [createSort, nameSort];
 
       const filterArray = sortArray.filter((item) =>
         queryAttribute.includes(item[0])
       );
-
-      // console.log("legal?", filterArray);
 
       try {
         const total = await tableConnection.count(whereOption);
@@ -157,7 +139,7 @@ const makeRegularController = ({
           limit: size,
           attributes: queryAttribute,
           ...whereOption,
-          order: filterArray,
+          ...(filterArray.length > 0 && { order: filterArray }),
         });
 
         return res.response(200, {
@@ -789,23 +771,132 @@ export const StockController = {
       Stock_Environment,
     } = req.app;
 
-    const onlyEnable = queryParam2False(req.query.onlyEnable);
-
-    const whereOption = {
-      where: {
-        ...(onlyEnable && { enable: true }),
-      },
-    };
-
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
-
-    // handle filter
+    // 搜尋商品維護
+    //
     try {
+      const onlyEnable = queryParam2False(req.query.onlyEnable);
+      const onlyDisable = queryParam2False(req.query.onlyDisable);
+
+      const keyword = req.query.keyword;
+
+      const seriesArray = await Series.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+
+      const supplierArray = await Supplier.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+
+      const stockColorArray = await StockColor.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+
+      const ColorSchemeSearch = await ColorScheme.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+      const stockColorSchemeSearch = await StockColor_ColorScheme.findAll({
+        where: {
+          color_scheme_id: ColorSchemeSearch.map((v) => v.id),
+        },
+      });
+      const stockColorIdArray = await StockColor.findAll({
+        where: {
+          id: stockColorSchemeSearch.map((v) => v.stock_color_id),
+        },
+      });
+
+      const materialNameSearch = await Material.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+
+      const StockMaterialArray = await Stock_Material.findAll({
+        where: {
+          material_id: materialNameSearch.map((v) => v.id),
+        },
+      });
+      const designNameSearch = await Design.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${keyword}%`,
+          },
+        },
+      });
+
+      const StockDesignArray = await Stock_Design.findAll({
+        where: {
+          design_id: designNameSearch.map((v) => v.id),
+        },
+      });
+
+      const whereOption = {
+        where: {
+          ...(onlyEnable && { enable: true }),
+          ...(onlyDisable && { enable: false }),
+          ...(req.query.keyword && {
+            [Op.or]: [
+              {
+                name: { [Op.like]: `%${req.query.keyword}%` },
+              },
+              { code: { [Op.like]: `%${req.query.keyword}%` } },
+              { description: { [Op.like]: `%${req.query.keyword}%` } },
+              { series_id: seriesArray.map((v) => v.id) },
+              { supplier_id: supplierArray.map((v) => v.id) },
+              { id: stockColorArray.map((v) => v.stock_id) },
+              { id: stockColorIdArray.map((v) => v.stock_id) },
+              { id: StockMaterialArray.map((v) => v.stock_id) },
+              { id: StockDesignArray.map((v) => v.stock_id) },
+            ],
+          }),
+        },
+      };
+
+      // handle filter
       const where = whereOption.where;
       const idDict = [];
+
+      const filterTime =
+        req.query.sort === "" ||
+        req.query.sort === "undefined" ||
+        req.query.sort === undefined
+          ? req.query.item === "ASC" || req.query.item === "DESC"
+            ? []
+            : ["create_time", "DESC"]
+          : ["create_time", req.query.sort];
+      const filterName =
+        req.query.item === "" ||
+        req.query.item === undefined ||
+        req.query.item === "undefined"
+          ? []
+          : ["name", req.query.item];
+
+      const sortArray = [filterTime, filterName].filter((v) => v.length > 0);
+
+      console.log("=======================");
+      console.log("filterTime", filterTime);
+      console.log("req.query.sort", req.query.sort);
+      console.log("filterName", filterName);
+      console.log("sortArray", sortArray);
+      console.log("=======================");
 
       req.query.colorScheme &&
         (await (async () => {
@@ -856,17 +947,13 @@ export const StockController = {
         ["1", "2", "3", "4", "5"].includes(req.query[fieldName]) &&
           (where[fieldName] = req.query[fieldName]);
       });
-    } catch {
-      return res.response(400);
-    }
 
-    try {
       const total = await Stock.count(whereOption);
       const { start, size, begin, totalPages } = getPage({
         ...req.query,
         total,
       });
-      console.log('where option',whereOption);
+      console.log("where option", whereOption);
 
       const stockList = (
         await Stock.findAll({
@@ -885,7 +972,7 @@ export const StockController = {
             "create_time",
           ],
           ...whereOption,
-          order: [["create_time", "DESC"]],
+          order: sortArray,
           raw: true,
         })
       ).map((stock) => ({
@@ -993,7 +1080,7 @@ export const StockController = {
       });
     } catch (error) {
       // log sql message with error.original.sqlMessage
-      console.log(error);
+      console.log("error in controller.js:", error);
       res.response(500);
     }
   },
