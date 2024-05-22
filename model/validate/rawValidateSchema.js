@@ -10,7 +10,7 @@ export const validateEmployeeSchema = {
   avatar: Yup.string(),
   email: Yup.string().email().required(),
   name: Yup.string().min(2).required(),
-  id_code: Yup.string()
+  id_code: Yup.string().uppercase()
     .required(),
   phone_number: Yup.string()
     .matches(/^\d{10}$/)

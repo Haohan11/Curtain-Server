@@ -603,6 +603,75 @@ export const MailAuthCodeSchema = {
   },
 }
 
+export const RoleSchema = {
+  name: "role",
+  cols: {
+  },
+  option: {
+    tableName: "role",
+  },
+  belongsToMany: [
+    {
+      targetTable: "User",
+      option: {
+        through: "User_Role",
+        foreignKey: "role_id",
+        otherKey: "user_id",
+      },
+    },
+  ],
+}
+
+export const PermissionSchema = {
+  name: "permission",
+  cols: {
+    // -&achor-ii
+    is_create: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-ii
+    is_read: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-ii
+    is_update: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-ii
+    is_delete: {
+      type: DataTypes.BOOLEAN
+    },
+    permission_type_id: {
+      type: DataTypes.INTEGER
+    },
+  },
+  option: {
+    tableName: "permission",
+  },
+  belongsToMany: [
+    {
+      targetTable: "Role",
+      option: {
+        through: "Role_Permission",
+        foreignKey: "permission_id",
+        otherKey: "role_id",
+      },
+    },
+  ],
+}
+
+export const PermissionTypeSchema = {
+  name: "permission_type",
+  cols: {
+    parent_id: {
+      type: DataTypes.INTEGER,
+    }
+  },
+  option: {
+    tableName: "permission_type",
+  },
+}
+
 //--------- normal Schemas above ---
 
 //--------- junction schema below ---
@@ -830,5 +899,98 @@ export const Combination_StockSchema = {
     },
   ],
 };
+
+export const User_RoleSchema = {
+  name: "user_role",
+  cols: {
+    user_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "user",
+        key: "id",
+      },
+    },
+    role_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "role",
+        key: "id",
+      },
+    },
+  },
+  option: {
+    tableName: "user_role",
+  },
+  belongsTo: [
+    {
+      targetTable: "User",
+      option: {
+        foreignKey: {
+          name: "user_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "Role",
+      option: {
+        foreignKey: {
+          name: "role_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+}
+
+export const Role_PermissionSchema = {
+  name: "role_permission",
+  cols: {
+    role_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "role",
+        key: "id",
+      },
+    },
+    permission_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "permission",
+        key: "id",
+      },
+    },
+    is_enable: {
+      type: DataTypes.BOOLEAN,
+    }
+  },
+  option: {
+    tableName: "role_permission",
+  },
+  belongsTo: [
+    {
+      targetTable: "Role",
+      option: {
+        foreignKey: {
+          name: "role_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+    {
+      targetTable: "Permission",
+      option: {
+        foreignKey: {
+          name: "permission_id",
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+      },
+    },
+  ],
+}
 
 //--------- junction schema above ---

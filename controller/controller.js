@@ -1,7 +1,7 @@
 import allValidator from "../model/validate/validator.js";
 import multer from "multer";
 import fs from "fs";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 
 import findStock from "./findStock.js";
 
@@ -19,6 +19,8 @@ import {
 
 const uploadStockImage = createUploadImage("stock");
 const uploadEnvImage = createUploadImage("env");
+
+const PERMISSION_TYPE_IDS = [1, 2, 3];
 
 /*
   About regularController:
@@ -97,15 +99,6 @@ const makeRegularController = ({
         queryAttribute.includes(Object.keys(item)[0])
       );
 
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("opArray", opArray);
-      // console.log("req query", req.query);
-      // console.log("queryAttribute", queryAttribute);
-      // console.log("===================");
-      // console.log("===================");
-      // console.log("===================");
       const onlyEnable = queryParam2False(req.query.onlyEnable);
       const onlyDisable = queryParam2False(req.query.onlyDisable);
 
@@ -119,31 +112,24 @@ const makeRegularController = ({
         },
       };
 
-      whereOption.where;
-
-      // console.log("req.query.sort", req.query.sort);
-      // console.log("req.query.item", req.query.item);
-
       const createSort =
-        (req.query.sort === "undefined" || req.query.sort === "")
+        req.query.sort === undefined ||
+        req.query.sort === "undefined" ||
+        req.query.sort === ""
           ? []
           : ["create_time", req.query.sort];
       const nameSort =
-       ( req.query.item === "undefined" || req.query.item === "")
+        req.query.item === undefined ||
+        req.query.item === "undefined" ||
+        req.query.item === ""
           ? []
           : ["name", req.query.item];
 
-      // const sortArray = [createSort, nameSort];
-
-      // console.log("createSort", createSort);
-      // console.log("nameSort", nameSort);
-      // console.log("sortArray", sortArray);
+      const sortArray = [createSort, nameSort];
 
       const filterArray = sortArray.filter((item) =>
         queryAttribute.includes(item[0])
       );
-
-      // console.log("legal?", filterArray);
 
       try {
         const total = await tableConnection.count(whereOption);
@@ -157,7 +143,7 @@ const makeRegularController = ({
           limit: size,
           attributes: queryAttribute,
           ...whereOption,
-          order: filterArray,
+          ...(filterArray.length > 0 && { order: filterArray }),
         });
 
         return res.response(200, {
@@ -797,10 +783,6 @@ export const StockController = {
       },
     };
 
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
-    console.log('res.query.keyword',req.query);
 
     // handle filter
     try {
@@ -866,7 +848,7 @@ export const StockController = {
         ...req.query,
         total,
       });
-      console.log('where option',whereOption);
+      console.log("where option", whereOption);
 
       const stockList = (
         await Stock.findAll({
@@ -1351,6 +1333,221 @@ export const CombinationController = {
     multer().none(),
     async (req, res) => {
       // return res.response(200, {...req.body, ...req._user})
+      const { Combination, Combination_Stock } = req.app;
+
+      // check stock list first
+      try {
+        const stockList = JSON.parse(req.body.stockList);
+        if (!Array.isArray(stockList)) throw new Error();
+      } catch {
+        return res.response(400, "Invalid stock list.");
+      }
+
+      const { validateCombination: validator } = allValidator;
+
+      const validatedData = await validator({ ...req.body, ...req._user });
+
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const combination_id = parseInt(req.body.id);
+      if (isNaN(combination_id)) return res.response(400, "Invalid comb id.");
+
+      const { create_name, create_id, modify_name, modify_id } = req._user;
+      const author = { create_name, create_id, modify_name, modify_id };
+
+      try {
+        await Combination.update(validatedData, {
+          where: { id: combination_id },
+        });
+
+        const stockIdList = JSON.parse(req.body.stockList);
+
+        await Combination_Stock.destroy({
+          where: {
+            combination_id,
+            stock_id: {
+              [Op.notIn]: stockIdList,
+            },
+          },
+        });
+
+        const insert_data = stockIdList.map((stock_id) => ({
+          ...author,
+          combination_id,
+          stock_id,
+        }));
+
+        await Combination_Stock.bulkCreate(insert_data, {
+          updateOnDuplicate: Object.keys(author),
+        });
+
+        res.response(200, "Success updated Combination.");
+      } catch (error) {
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
+  delete: [
+    multer().none(),
+    async (req, res) => {
+      const { Combination } = req.app;
+      const id = parseInt(req.body.id);
+
+      if (isNaN(id)) return res.response(400);
+
+      const { user_id } = req._user;
+
+      try {
+        await Combination.destroy({ where: { id, user_id } });
+      } catch (error) {
+        console.log(error);
+        return res.response(500);
+      }
+
+      res.response(200, "Success deleted combination.");
+    },
+  ],
+};
+
+export const RoleController = {
+  create: [
+    multer().none(),
+    async (req, res) => {
+      const { Role, Permission } = req.app;
+
+      return res.response(200, "Create Role route.");
+
+      // check stock list first
+      try {
+        const stockList = JSON.parse(req.body.stockList);
+        if (!Array.isArray(stockList)) throw new Error();
+      } catch {
+        return res.response(400, "Invalid stock list.");
+      }
+
+      const { validateCombination: validator } = allValidator;
+
+      const validatedData = await validator({ ...req.body, ...req._user });
+
+      if (validatedData === false) return res.response(400, "Invalid format.");
+
+      const { create_name, create_id, modify_name, modify_id } = req._user;
+      const author = { create_name, create_id, modify_name, modify_id };
+
+      try {
+        const { id: combination_id } = await Combination.create(validatedData);
+
+        const stockList = JSON.parse(req.body.stockList);
+
+        const insert_data = stockList.map((stockId) => {
+          const stock_id = parseInt(stockId);
+          if (isNaN(stock_id)) {
+            const error = new Error("Invalid stock id.");
+            error.name = "wrongStockId";
+            throw error;
+          }
+          return { ...author, combination_id, stock_id };
+        });
+
+        Combination_Stock.removeAttribute("id");
+        await Combination_Stock.bulkCreate(insert_data);
+
+        res.response(200, "Success added Combination.");
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        if (error.name === "wrongStockId")
+          return res.response(400, error.message);
+        res.response(500);
+      }
+    },
+  ],
+  read: [
+    async (req, res) => {
+      // return res.response(200);
+      const { Permission } = req.app;
+      const permissionList = await Permission.findAll({
+        where: {
+          permission_type_id: PERMISSION_TYPE_IDS,
+        },
+      });
+      const { user_id } = req._user;
+
+      try {
+        const total = await Combination.count({
+          where: {
+            user_id,
+          },
+        });
+        const { start, size, begin, totalPages } = getPage({
+          ...req.query,
+          total,
+        });
+
+        const combList = await Combination.findAll({
+          offset: begin,
+          limit: size,
+          attributes: ["id", "name", "environment_id", "create_time"],
+          where: {
+            user_id,
+          },
+          order: [["create_time", "DESC"]],
+        });
+
+        const list = await Promise.all(
+          combList.map(async (comb) => {
+            const { name: environment_name, env_image } =
+              await Environment.findByPk(comb.environment_id);
+            const stockIdList = await Combination_Stock.findAll({
+              attributes: ["stock_id"],
+              where: { combination_id: comb.id },
+            });
+            const stockList = await findStock(req, {
+              attributes: [
+                "id",
+                "enable",
+                "code",
+                "name",
+                "series_id",
+                "supplier_id",
+                "block",
+                "absorption",
+                "description",
+                "create_time",
+              ],
+              where: {
+                id: stockIdList.map((item) => item.stock_id),
+              },
+            });
+            return {
+              ...comb.get({ plain: true }),
+              environment_name,
+              env_image,
+              stockList,
+            };
+          })
+        );
+
+        return res.response(200, {
+          start,
+          size,
+          begin,
+          total,
+          totalPages,
+          list,
+        });
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
+  update: [
+    multer().none(),
+    async (req, res) => {
+      return res.response(200);
       const { Combination, Combination_Stock } = req.app;
 
       // check stock list first

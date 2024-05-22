@@ -1,7 +1,6 @@
 import express from "express";
 
 import { allConnectMiddleware } from "./middleware/connectToTable.js";
-import addAuthor from "./middleware/addAuthor.js";
 
 import { toArray } from "./model/helper.js";
 import * as AllController from "./controller/controller.js";
@@ -70,6 +69,12 @@ const tablesDependencies = {
     tableName: "Account",
     connectMiddlewares: [
       "Employee","User"
+    ],
+  },
+  Role: {
+    tableName: "Role",
+    connectMiddlewares: [
+      "Role", "Permission", "PermissionType", "User_Role", "Role_Permission"
     ],
   },
 };
