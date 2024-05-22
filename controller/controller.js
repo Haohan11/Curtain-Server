@@ -890,14 +890,6 @@ export const StockController = {
           : ["name", req.query.item];
 
       const sortArray = [filterTime, filterName].filter((v) => v.length > 0);
-
-      console.log("=======================");
-      console.log("filterTime", filterTime);
-      console.log("req.query.sort", req.query.sort);
-      console.log("filterName", filterName);
-      console.log("sortArray", sortArray);
-      console.log("=======================");
-
       req.query.colorScheme &&
         (await (async () => {
           const colorScheme = JSON.parse(req.query.colorScheme);
