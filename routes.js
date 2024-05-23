@@ -77,6 +77,12 @@ const tablesDependencies = {
       "Role", "Permission", "PermissionType", "User_Role", "Role_Permission"
     ],
   },
+  Permission: {
+    tableName: "Permission",
+    connectMiddlewares: [
+      "Permission", "PermissionType"
+    ],
+  },
 };
 
 const Routers = Object.entries(tablesDependencies).reduce(

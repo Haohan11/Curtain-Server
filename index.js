@@ -23,6 +23,7 @@ const {
   CombinationRouter,
   AccountRouter,
   RoleRouter,
+  PermissionRouter,
 } = Routers;
 
 import connectDbMiddleWare from "./middleware/connectDbMiddleware.js";
@@ -282,6 +283,7 @@ app.use("/color-name", ColorNameRouter);
 app.use("/combination", CombinationRouter);
 app.use("/account", AccountRouter);
 app.use("/role", RoleRouter);
+app.use("/permission", PermissionRouter);
 
 app.post("/logout", async function (req, res) {
   try {

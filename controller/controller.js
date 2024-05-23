@@ -1572,61 +1572,7 @@ export const RoleController = {
   ],
   read: [
     async (req, res) => {
-      const { Permission, PermissionType } = req.app;
-
-      const permissionTypeList = await PermissionType.findAll({
-        attributes: ["id", "code", "name"],
-      });
-      const typeDict = permissionTypeList.reduce(
-        (dict, type) => ({
-          ...dict,
-          [type.id]: {
-            code: type.code,
-            name: type.name,
-          },
-        }),
-        {}
-      );
-
-      const permissionList = await Permission.findAll({
-        attributes: ["id", "code", "name", "parent_id", "permission_type_id"],
-      });
-
-      const permissionDict = permissionList.reduce(
-        (dict, perm) => ({
-          ...dict,
-          [perm.id]: {
-            id: perm.id,
-            name:
-              perm.name === "index_item"
-                ? typeDict[perm.permission_type_id].name
-                : perm.name,
-            code: perm.code || typeDict[perm.permission_type_id].code,
-            ...(perm.name !== "index_item" && { childs: [] }),
-            status: false,
-          },
-        }),
-        {}
-      );
-
-      const handledPermissionList = permissionList.reduce(
-        (dict, currentItem) => {
-          [null, 0, currentItem.id].includes(currentItem.parent_id)
-            ? dict.push(permissionDict[currentItem.id])
-            : permissionDict[currentItem.parent_id].childs.push(
-                permissionDict[currentItem.id]
-              );
-          return dict;
-        },
-        []
-      );
-
-      console.log(
-        "===============",
-        JSON.stringify(handledPermissionList, null, 4)
-      );
-
-      return res.response(200, { permission: handledPermissionList, list: [] });
+      return res.response(200, { list: [] });
       const { user_id } = req._user;
 
       try {
@@ -1832,12 +1778,7 @@ export const PermissionController = {
         []
       );
 
-      console.log(
-        "===============",
-        JSON.stringify(handledPermissionList, null, 4)
-      );
-
-      return res.response(200, { permission: handledPermissionList, list: [] });
+      return res.response(200, { list: handledPermissionList, });
       const { user_id } = req._user;
 
       try {
