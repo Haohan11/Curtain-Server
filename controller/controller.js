@@ -1521,51 +1521,41 @@ export const RoleController = {
   create: [
     multer().none(),
     async (req, res) => {
-      const { Role, Permission } = req.app;
+      const { Role, Role_Permission } = req.app;
+      const { validateRole: validator } = allValidator;
 
-      return res.response(200, "Create Role route.");
+      const { permission } = req.body;
 
-      // check stock list first
       try {
-        const stockList = JSON.parse(req.body.stockList);
-        if (!Array.isArray(stockList)) throw new Error();
+        JSON.parse(permission);
       } catch {
-        return res.response(400, "Invalid stock list.");
+        return res.response(400, "Invalid permission.");
       }
 
-      const { validateCombination: validator } = allValidator;
-
       const validatedData = await validator({ ...req.body, ...req._user });
-
-      if (validatedData === false) return res.response(400, "Invalid format.");
-
-      const { create_name, create_id, modify_name, modify_id } = req._user;
-      const author = { create_name, create_id, modify_name, modify_id };
+      if (validatedData === false) {
+        return res.response(400, "Invalid format.");
+      }
 
       try {
-        const { id: combination_id } = await Combination.create(validatedData);
+        const { id: role_id } = await Role.create(validatedData);
 
-        const stockList = JSON.parse(req.body.stockList);
+        const bulkData = Object.entries(JSON.parse(permission)).reduce(
+          (insert_data, [per_id, status]) => {
+            const permission_id = parseInt(per_id);
+            return isNaN(permission_id) || !status
+              ? insert_data
+              : [...insert_data, { permission_id, role_id, ...req._user }];
+          },
+          []
+        );
 
-        const insert_data = stockList.map((stockId) => {
-          const stock_id = parseInt(stockId);
-          if (isNaN(stock_id)) {
-            const error = new Error("Invalid stock id.");
-            error.name = "wrongStockId";
-            throw error;
-          }
-          return { ...author, combination_id, stock_id };
-        });
+        await Role_Permission.bulkCreate(bulkData);
 
-        Combination_Stock.removeAttribute("id");
-        await Combination_Stock.bulkCreate(insert_data);
-
-        res.response(200, "Success added Combination.");
+        res.response(200, "Success create Role data.");
       } catch (error) {
         // log sql message with error.original.sqlMessage
         console.log(error);
-        if (error.name === "wrongStockId")
-          return res.response(400, error.message);
         res.response(500);
       }
     },
@@ -1778,7 +1768,7 @@ export const PermissionController = {
         []
       );
 
-      return res.response(200, { list: handledPermissionList, });
+      return res.response(200, { list: handledPermissionList });
       const { user_id } = req._user;
 
       try {
@@ -1851,4 +1841,4 @@ export const PermissionController = {
       }
     },
   ],
-}
+};

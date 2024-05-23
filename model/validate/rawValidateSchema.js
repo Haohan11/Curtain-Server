@@ -84,3 +84,7 @@ export const validateCombinationSchema = {
   user_id: Yup.number().integer().required(),
   environment_id: Yup.number().integer().required(),
 };
+
+export const validateRoleSchema = {
+  name: Yup.string().min(2).required(),
+};
