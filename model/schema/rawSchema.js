@@ -625,24 +625,13 @@ export const RoleSchema = {
 export const PermissionSchema = {
   name: "permission",
   cols: {
-    // -&achor-ii
-    is_create: {
-      type: DataTypes.BOOLEAN
-    },
-    // -&achor-ii
-    is_read: {
-      type: DataTypes.BOOLEAN
-    },
-    // -&achor-ii
-    is_update: {
-      type: DataTypes.BOOLEAN
-    },
-    // -&achor-ii
-    is_delete: {
-      type: DataTypes.BOOLEAN
-    },
+    // -&achor-p
     permission_type_id: {
-      type: DataTypes.INTEGER
+      type: DataTypes.INTEGER,
+    },
+    // -&achor-p
+    parent_id: {
+      type: DataTypes.INTEGER,
     },
   },
   option: {
@@ -663,9 +652,22 @@ export const PermissionSchema = {
 export const PermissionTypeSchema = {
   name: "permission_type",
   cols: {
-    parent_id: {
-      type: DataTypes.INTEGER,
-    }
+    // -&achor-pt
+    is_create: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-pt
+    is_read: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-pt
+    is_update: {
+      type: DataTypes.BOOLEAN
+    },
+    // -&achor-pt
+    is_delete: {
+      type: DataTypes.BOOLEAN
+    },
   },
   option: {
     tableName: "permission_type",

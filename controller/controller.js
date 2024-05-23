@@ -20,8 +20,6 @@ import {
 const uploadStockImage = createUploadImage("stock");
 const uploadEnvImage = createUploadImage("env");
 
-const PERMISSION_TYPE_IDS = [1, 2, 3];
-
 /*
   About regularController:
 
@@ -120,12 +118,12 @@ const makeRegularController = ({
       const createSort =
         req.query.sort === undefined ||
         req.query.sort === "undefined" ||
-        req.query.sort === ""
-        req.query.sort === undefined ||
-        req.query.sort === "undefined" ||
-        req.query.sort === ""
-          ? []
-          : ["create_time", req.query.sort];
+        req.query.sort === "";
+      req.query.sort === undefined ||
+      req.query.sort === "undefined" ||
+      req.query.sort === ""
+        ? []
+        : ["create_time", req.query.sort];
       const nameSort =
         req.query.item === undefined ||
         req.query.item === "undefined" ||
@@ -1574,13 +1572,61 @@ export const RoleController = {
   ],
   read: [
     async (req, res) => {
-      // return res.response(200);
-      const { Permission } = req.app;
-      const permissionList = await Permission.findAll({
-        where: {
-          permission_type_id: PERMISSION_TYPE_IDS,
-        },
+      const { Permission, PermissionType } = req.app;
+
+      const permissionTypeList = await PermissionType.findAll({
+        attributes: ["id", "code", "name"],
       });
+      const typeDict = permissionTypeList.reduce(
+        (dict, type) => ({
+          ...dict,
+          [type.id]: {
+            code: type.code,
+            name: type.name,
+          },
+        }),
+        {}
+      );
+
+      const permissionList = await Permission.findAll({
+        attributes: ["id", "code", "name", "parent_id", "permission_type_id"],
+      });
+
+      const permissionDict = permissionList.reduce(
+        (dict, perm) => ({
+          ...dict,
+          [perm.id]: {
+            id: perm.id,
+            name:
+              perm.name === "index_item"
+                ? typeDict[perm.permission_type_id].name
+                : perm.name,
+            code: perm.code || typeDict[perm.permission_type_id].code,
+            ...(perm.name !== "index_item" && { childs: [] }),
+            status: false,
+          },
+        }),
+        {}
+      );
+
+      const handledPermissionList = permissionList.reduce(
+        (dict, currentItem) => {
+          [null, 0, currentItem.id].includes(currentItem.parent_id)
+            ? dict.push(permissionDict[currentItem.id])
+            : permissionDict[currentItem.parent_id].childs.push(
+                permissionDict[currentItem.id]
+              );
+          return dict;
+        },
+        []
+      );
+
+      console.log(
+        "===============",
+        JSON.stringify(handledPermissionList, null, 4)
+      );
+
+      return res.response(200, { permission: handledPermissionList, list: [] });
       const { user_id } = req._user;
 
       try {
@@ -1733,3 +1779,135 @@ export const RoleController = {
     },
   ],
 };
+
+export const PermissionController = {
+  read: [
+    async (req, res) => {
+      const { Permission, PermissionType } = req.app;
+
+      const permissionTypeList = await PermissionType.findAll({
+        attributes: ["id", "code", "name"],
+      });
+      const typeDict = permissionTypeList.reduce(
+        (dict, type) => ({
+          ...dict,
+          [type.id]: {
+            code: type.code,
+            name: type.name,
+          },
+        }),
+        {}
+      );
+
+      const permissionList = await Permission.findAll({
+        attributes: ["id", "code", "name", "parent_id", "permission_type_id"],
+      });
+
+      const permissionDict = permissionList.reduce(
+        (dict, perm) => ({
+          ...dict,
+          [perm.id]: {
+            id: perm.id,
+            name:
+              perm.name === "index_item"
+                ? typeDict[perm.permission_type_id].name
+                : perm.name,
+            code: perm.code || typeDict[perm.permission_type_id].code,
+            ...(perm.name !== "index_item" && { childs: [] }),
+            status: false,
+          },
+        }),
+        {}
+      );
+
+      const handledPermissionList = permissionList.reduce(
+        (dict, currentItem) => {
+          [null, 0, currentItem.id].includes(currentItem.parent_id)
+            ? dict.push(permissionDict[currentItem.id])
+            : permissionDict[currentItem.parent_id].childs.push(
+                permissionDict[currentItem.id]
+              );
+          return dict;
+        },
+        []
+      );
+
+      console.log(
+        "===============",
+        JSON.stringify(handledPermissionList, null, 4)
+      );
+
+      return res.response(200, { permission: handledPermissionList, list: [] });
+      const { user_id } = req._user;
+
+      try {
+        const total = await Combination.count({
+          where: {
+            user_id,
+          },
+        });
+        const { start, size, begin, totalPages } = getPage({
+          ...req.query,
+          total,
+        });
+
+        const combList = await Combination.findAll({
+          offset: begin,
+          limit: size,
+          attributes: ["id", "name", "environment_id", "create_time"],
+          where: {
+            user_id,
+          },
+          order: [["create_time", "DESC"]],
+        });
+
+        const list = await Promise.all(
+          combList.map(async (comb) => {
+            const { name: environment_name, env_image } =
+              await Environment.findByPk(comb.environment_id);
+            const stockIdList = await Combination_Stock.findAll({
+              attributes: ["stock_id"],
+              where: { combination_id: comb.id },
+            });
+            const stockList = await findStock(req, {
+              attributes: [
+                "id",
+                "enable",
+                "code",
+                "name",
+                "series_id",
+                "supplier_id",
+                "block",
+                "absorption",
+                "description",
+                "create_time",
+              ],
+              where: {
+                id: stockIdList.map((item) => item.stock_id),
+              },
+            });
+            return {
+              ...comb.get({ plain: true }),
+              environment_name,
+              env_image,
+              stockList,
+            };
+          })
+        );
+
+        return res.response(200, {
+          start,
+          size,
+          begin,
+          total,
+          totalPages,
+          list,
+        });
+      } catch (error) {
+        // log sql message with error.original.sqlMessage
+        console.log(error);
+        res.response(500);
+      }
+    },
+  ],
+}
