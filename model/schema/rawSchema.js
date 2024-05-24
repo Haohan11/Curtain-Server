@@ -964,9 +964,6 @@ export const Role_PermissionSchema = {
         key: "id",
       },
     },
-    is_enable: {
-      type: DataTypes.BOOLEAN,
-    }
   },
   option: {
     tableName: "role_permission",

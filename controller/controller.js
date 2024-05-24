@@ -4,6 +4,7 @@ import fs from "fs";
 import { Op } from "sequelize";
 
 import findStock from "./findStock.js";
+import getPermission from "./getPermission.js";
 
 import {
   goHash,
@@ -1527,7 +1528,8 @@ export const RoleController = {
       const { permission } = req.body;
 
       try {
-        JSON.parse(permission);
+        if (!Object.values(JSON.parse(permission)).includes(true))
+          throw new Error("Invalid permission.");
       } catch {
         return res.response(400, "Invalid permission.");
       }
@@ -1562,72 +1564,34 @@ export const RoleController = {
   ],
   read: [
     async (req, res) => {
-      return res.response(200, { list: [] });
-      const { user_id } = req._user;
+      const { Role, Role_Permission } = req.app;
+      const findPermission = (option) => getPermission(req, option);
 
       try {
-        const total = await Combination.count({
-          where: {
-            user_id,
-          },
-        });
-        const { start, size, begin, totalPages } = getPage({
-          ...req.query,
-          total,
-        });
-
-        const combList = await Combination.findAll({
-          offset: begin,
-          limit: size,
-          attributes: ["id", "name", "environment_id", "create_time"],
-          where: {
-            user_id,
-          },
-          order: [["create_time", "DESC"]],
+        const roleList = await Role.findAll({
+          attributes: ["id", "name", "description"],
+          raw: true,
         });
 
         const list = await Promise.all(
-          combList.map(async (comb) => {
-            const { name: environment_name, env_image } =
-              await Environment.findByPk(comb.environment_id);
-            const stockIdList = await Combination_Stock.findAll({
-              attributes: ["stock_id"],
-              where: { combination_id: comb.id },
-            });
-            const stockList = await findStock(req, {
-              attributes: [
-                "id",
-                "enable",
-                "code",
-                "name",
-                "series_id",
-                "supplier_id",
-                "block",
-                "absorption",
-                "description",
-                "create_time",
-              ],
+          roleList.map(async (role) => {
+            const permIdList = await Role_Permission.findAll({
+              attributes: ["permission_id"],
               where: {
-                id: stockIdList.map((item) => item.stock_id),
+                role_id: role.id,
               },
             });
-            return {
-              ...comb.get({ plain: true }),
-              environment_name,
-              env_image,
-              stockList,
-            };
+            const permissions = await findPermission({
+              where: {
+                id: permIdList.map((perm) => perm.permission_id),
+              },
+            });
+
+            return { ...role, permissions };
           })
         );
 
-        return res.response(200, {
-          start,
-          size,
-          begin,
-          total,
-          totalPages,
-          list,
-        });
+        return res.response(200, { list });
       } catch (error) {
         // log sql message with error.original.sqlMessage
         console.log(error);
@@ -1719,124 +1683,10 @@ export const RoleController = {
 export const PermissionController = {
   read: [
     async (req, res) => {
-      const { Permission, PermissionType } = req.app;
-
-      const permissionTypeList = await PermissionType.findAll({
-        attributes: ["id", "code", "name"],
-      });
-      const typeDict = permissionTypeList.reduce(
-        (dict, type) => ({
-          ...dict,
-          [type.id]: {
-            code: type.code,
-            name: type.name,
-          },
-        }),
-        {}
-      );
-
-      const permissionList = await Permission.findAll({
-        attributes: ["id", "code", "name", "parent_id", "permission_type_id"],
-      });
-
-      const permissionDict = permissionList.reduce(
-        (dict, perm) => ({
-          ...dict,
-          [perm.id]: {
-            id: perm.id,
-            name:
-              perm.name === "index_item"
-                ? typeDict[perm.permission_type_id].name
-                : perm.name,
-            code: perm.code || typeDict[perm.permission_type_id].code,
-            ...(perm.name !== "index_item" && { childs: [] }),
-            status: false,
-          },
-        }),
-        {}
-      );
-
-      const handledPermissionList = permissionList.reduce(
-        (dict, currentItem) => {
-          [null, 0, currentItem.id].includes(currentItem.parent_id)
-            ? dict.push(permissionDict[currentItem.id])
-            : permissionDict[currentItem.parent_id].childs.push(
-                permissionDict[currentItem.id]
-              );
-          return dict;
-        },
-        []
-      );
-
-      return res.response(200, { list: handledPermissionList });
-      const { user_id } = req._user;
-
       try {
-        const total = await Combination.count({
-          where: {
-            user_id,
-          },
-        });
-        const { start, size, begin, totalPages } = getPage({
-          ...req.query,
-          total,
-        });
-
-        const combList = await Combination.findAll({
-          offset: begin,
-          limit: size,
-          attributes: ["id", "name", "environment_id", "create_time"],
-          where: {
-            user_id,
-          },
-          order: [["create_time", "DESC"]],
-        });
-
-        const list = await Promise.all(
-          combList.map(async (comb) => {
-            const { name: environment_name, env_image } =
-              await Environment.findByPk(comb.environment_id);
-            const stockIdList = await Combination_Stock.findAll({
-              attributes: ["stock_id"],
-              where: { combination_id: comb.id },
-            });
-            const stockList = await findStock(req, {
-              attributes: [
-                "id",
-                "enable",
-                "code",
-                "name",
-                "series_id",
-                "supplier_id",
-                "block",
-                "absorption",
-                "description",
-                "create_time",
-              ],
-              where: {
-                id: stockIdList.map((item) => item.stock_id),
-              },
-            });
-            return {
-              ...comb.get({ plain: true }),
-              environment_name,
-              env_image,
-              stockList,
-            };
-          })
-        );
-
-        return res.response(200, {
-          start,
-          size,
-          begin,
-          total,
-          totalPages,
-          list,
-        });
-      } catch (error) {
-        // log sql message with error.original.sqlMessage
-        console.log(error);
+        const handledPermissionList = await getPermission(req);
+        res.response(200, { list: handledPermissionList });
+      } catch {
         res.response(500);
       }
     },
