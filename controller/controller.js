@@ -1609,82 +1609,64 @@ export const RoleController = {
   update: [
     multer().none(),
     async (req, res) => {
-      return res.response(200);
-      const { Combination, Combination_Stock } = req.app;
+      const role_id = parseInt(req.body.id);
+      if (isNaN(role_id)) return res.response(400, "Invalid Role id.");
 
-      // check stock list first
-      try {
-        const stockList = JSON.parse(req.body.stockList);
-        if (!Array.isArray(stockList)) throw new Error();
-      } catch {
-        return res.response(400, "Invalid stock list.");
+      const permList = (() => {
+        try {
+          return Object.entries(JSON.parse(req.body.permission)).reduce(
+            (arr, [id, status]) => {
+              const parseId = parseInt(id);
+              return isNaN(parseId) || !status ? arr : [...arr, parseId];
+            },
+            []
+          );
+        } catch {
+          return false;
+        }
+      })();
+
+      if (!permList) return res.response(400, "Invalid Permissions.");
+
+      const { validateRole: validator } = allValidator;
+      const validatedData = await validator({ ...req.body, ...req._user });
+      if (validatedData === false) {
+        return res.response(400, "Invalid format.");
       }
 
-      const { validateCombination: validator } = allValidator;
-
-      const validatedData = await validator({ ...req.body, ...req._user });
-
-      if (validatedData === false) return res.response(400, "Invalid format.");
-
-      const combination_id = parseInt(req.body.id);
-      if (isNaN(combination_id)) return res.response(400, "Invalid comb id.");
-
-      const { create_name, create_id, modify_name, modify_id } = req._user;
-      const author = { create_name, create_id, modify_name, modify_id };
+      const { Role, Role_Permission } = req.app;
 
       try {
-        await Combination.update(validatedData, {
-          where: { id: combination_id },
+        await Role.update(validatedData, {
+          where: {
+            id: role_id,
+          },
         });
 
-        const stockIdList = JSON.parse(req.body.stockList);
-
-        await Combination_Stock.destroy({
+        await Role_Permission.destroy({
           where: {
-            combination_id,
-            stock_id: {
-              [Op.notIn]: stockIdList,
+            role_id,
+            permission_id: {
+              [Op.notIn]: permList,
             },
           },
         });
 
-        const insert_data = stockIdList.map((stock_id) => ({
-          ...author,
-          combination_id,
-          stock_id,
+        const insert_data = permList.map((permission_id) => ({
+          role_id,
+          permission_id,
+          ...req._user,
         }));
 
-        await Combination_Stock.bulkCreate(insert_data, {
-          updateOnDuplicate: Object.keys(author),
+        await Role_Permission.bulkCreate(insert_data, {
+          updateOnDuplicate: Object.keys(req._user),
         });
-
-        res.response(200, "Success updated Combination.");
-      } catch (error) {
-        console.log(error);
+        res.response(200, "Success updated Role data");
+      } catch {
         res.response(500);
       }
     },
-  ],
-  delete: [
-    multer().none(),
-    async (req, res) => {
-      const { Combination } = req.app;
-      const id = parseInt(req.body.id);
-
-      if (isNaN(id)) return res.response(400);
-
-      const { user_id } = req._user;
-
-      try {
-        await Combination.destroy({ where: { id, user_id } });
-      } catch (error) {
-        console.log(error);
-        return res.response(500);
-      }
-
-      res.response(200, "Success deleted combination.");
-    },
-  ],
+  ]
 };
 
 export const PermissionController = {
