@@ -34,7 +34,6 @@ const getPermission = async (req, option) => {
             : perm.name,
         code: perm.code || typeDict[perm.permission_type_id].code,
         ...(perm.name !== "index_item" && { childs: [] }),
-        status: false,
       },
     }),
     {}

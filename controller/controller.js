@@ -1564,8 +1564,7 @@ export const RoleController = {
   ],
   read: [
     async (req, res) => {
-      const { Role, Role_Permission } = req.app;
-      const findPermission = (option) => getPermission(req, option);
+      const { Role, Role_Permission, Permission } = req.app;
 
       try {
         const roleList = await Role.findAll({
@@ -1575,19 +1574,27 @@ export const RoleController = {
 
         const list = await Promise.all(
           roleList.map(async (role) => {
-            const permIdList = await Role_Permission.findAll({
+            const enablePermList = await Role_Permission.findAll({
               attributes: ["permission_id"],
               where: {
                 role_id: role.id,
               },
             });
-            const permissions = await findPermission({
-              where: {
-                id: permIdList.map((perm) => perm.permission_id),
-              },
+            const enableIds = enablePermList.map((perm) => perm.permission_id);
+            const permissionList = await Permission.findAll({
+              attributes: ["id"],
             });
 
-            return { ...role, permissions };
+            return {
+              ...role,
+              permission: permissionList.reduce(
+                (dict, { id }) => ({
+                  ...dict,
+                  [`${id}`]: enableIds.includes(id),
+                }),
+                {}
+              ),
+            };
           })
         );
 
