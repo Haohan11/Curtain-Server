@@ -201,38 +201,39 @@ app.post("/login", async function (req, res) {
       user: User,
       role: Role,
       permission: Permission,
+      user_role: User_Role,
       role_permission: Role_Permission,
     } = req.app.sequelize.models;
 
-    User.findOne({
+    const user = await User.findOne({
       where: {
         account: account,
       },
-    }).then((user) => {
-      if (!user) {
-        return res.response(404, "帳號錯誤");
-      }
-      const isPasswordCorrect = bcrypt.compareSync(password, user.password);
-      if (!isPasswordCorrect) {
-        return res.response(403, "密碼錯誤");
-      }
+    });
 
-      const payload = {
-        user_account: account,
-        user_password: password,
-      };
-      const exp =
-        Math.floor(Date.now() / 1000) +
-        (parseInt(process.env.EXPIRE_TIME) || 3600);
-      const token = jwt.sign({ payload, exp }, "my_secret_key");
+    if (!user) return res.response(404, "帳號錯誤");
 
-      res.response(200, {
-        id: user.id,
-        name: user.name,
-        token: token,
-        token_type: "bearer",
-        _exp: exp,
-      });
+    // const urResult = await User_Role.findOne({ where: { user_id: user.id } });
+    // if(!urResult || urResult.role_id) return res.response(401, "權限不足");
+
+    const isPasswordCorrect = bcrypt.compareSync(password, user.password);
+    if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
+
+    const payload = {
+      user_account: account,
+      user_password: password,
+    };
+    const exp =
+      Math.floor(Date.now() / 1000) +
+      (parseInt(process.env.EXPIRE_TIME) || 3600);
+    const token = jwt.sign({ payload, exp }, "my_secret_key");
+
+    res.response(200, {
+      id: user.id,
+      name: user.name,
+      token: token,
+      token_type: "bearer",
+      _exp: exp,
     });
   } catch (error) {
     console.log(error);
