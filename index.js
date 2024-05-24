@@ -6,7 +6,7 @@ import multer from "multer";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
-import { goHash } from "./model/helper.js"
+import { goHash } from "./model/helper.js";
 
 import { Routers } from "./routes.js";
 
@@ -52,52 +52,6 @@ app.use(express.json());
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
-
-app.post("/login", async function (req, res) {
-  try {
-    const { account, password } = req.body;
-    const { UserSchema } = Schemas;
-
-    const sequelize = await connectToDataBase();
-    const User = createSchema(sequelize, UserSchema);
-
-    sequelize.sync().then(() => {
-      User.findOne({
-        where: {
-          account: account,
-        },
-      }).then((user) => {
-        if (!user) {
-          return res.response(404, "帳號錯誤");
-        }
-        const isPasswordCorrect = bcrypt.compareSync(password, user.password);
-        if (!isPasswordCorrect) {
-          return res.response(403, "密碼錯誤");
-        }
-
-        const payload = {
-          user_account: account,
-          user_password: password,
-        };
-        const exp =
-          Math.floor(Date.now() / 1000) +
-          (parseInt(process.env.EXPIRE_TIME) || 3600);
-        const token = jwt.sign({ payload, exp }, "my_secret_key");
-
-        res.response(200, {
-          id: user.id,
-          name: user.name,
-          token: token,
-          token_type: "bearer",
-          _exp: exp,
-        });
-      });
-    });
-  } catch (error) {
-    console.log(error);
-    res.response(500, { error });
-  }
-});
 
 app.post("/sendmail", multer().none(), async (req, res) => {
   const { UserSchema, MailAuthCodeSchema } = Schemas;
@@ -239,30 +193,83 @@ app.post("/authcodecheck", multer().none(), async (req, res) => {
 app.use(connectDbMiddleWare);
 app.use(establishAssociation);
 
+app.post("/login", async function (req, res) {
+  try {
+    const { account, password } = req.body;
+
+    const {
+      user: User,
+      role: Role,
+      permission: Permission,
+      role_permission: Role_Permission,
+    } = req.app.sequelize.models;
+
+    User.findOne({
+      where: {
+        account: account,
+      },
+    }).then((user) => {
+      if (!user) {
+        return res.response(404, "帳號錯誤");
+      }
+      const isPasswordCorrect = bcrypt.compareSync(password, user.password);
+      if (!isPasswordCorrect) {
+        return res.response(403, "密碼錯誤");
+      }
+
+      const payload = {
+        user_account: account,
+        user_password: password,
+      };
+      const exp =
+        Math.floor(Date.now() / 1000) +
+        (parseInt(process.env.EXPIRE_TIME) || 3600);
+      const token = jwt.sign({ payload, exp }, "my_secret_key");
+
+      res.response(200, {
+        id: user.id,
+        name: user.name,
+        token: token,
+        token_type: "bearer",
+        _exp: exp,
+      });
+    });
+  } catch (error) {
+    console.log(error);
+    res.response(500, { error });
+  }
+});
+
 app.post(
   "/resetpassword",
   multer().none(),
   authResetMiddleware,
   addUserMiddleware,
   async (req, res) => {
-    const { user: User, employee: Employee } = req.app.sequelize.models
+    const { user: User, employee: Employee } = req.app.sequelize.models;
     const { user_account } = req._user;
     const password = req.body.password;
 
-    const hashedPassword = await goHash(password)
-    await User.update({password: hashedPassword, ...req._user}, {
-      where: {
-        account: user_account
+    const hashedPassword = await goHash(password);
+    await User.update(
+      { password: hashedPassword, ...req._user },
+      {
+        where: {
+          account: user_account,
+        },
       }
-    })
+    );
 
-     await Employee.update({password: hashedPassword, ...req._user}, {
-      where: {
-        email: user_account
+    await Employee.update(
+      { password: hashedPassword, ...req._user },
+      {
+        where: {
+          email: user_account,
+        },
       }
-    })
+    );
 
-    res.response(200, "Success change password.")
+    res.response(200, "Success change password.");
   }
 );
 

@@ -291,7 +291,10 @@ export const EmployeeController = {
   create: [
     multer().none(),
     async (req, res) => {
-      const { Employee, User } = req.app;
+      const { Employee, User, User_Role } = req.app;
+
+      const role_id = parseInt(req.body.role);
+      if (isNaN(role_id)) return res.response(400, "Invalid role id.");
 
       const { validateEmployee: validator } = allValidator;
       const validatedData = await validator({ ...req.body, ...req._user });
@@ -320,6 +323,12 @@ export const EmployeeController = {
           code,
         });
 
+        await User_Role.create({
+          ...req._user,
+          user_id,
+          role_id,
+        });
+
         res.response(200, `Success added Employee and User.`);
       } catch (error) {
         // log sql message with error.original.sqlMessage
@@ -330,21 +339,112 @@ export const EmployeeController = {
       }
     },
   ],
-  read: makeRegularController({
-    tableName: "Employee",
-    read: {
-      queryAttribute: [
-        "id",
-        "enable",
-        "role",
-        "code",
-        "name",
-        "id_code",
-        "phone_number",
-        "email",
-      ],
-    },
-  })["read"],
+  read: async (req, res) => {
+    const { Employee, User_Role } = req.app;
+    const queryAttribute = [
+      "id",
+      "enable",
+      "role",
+      "code",
+      "name",
+      "id_code",
+      "phone_number",
+      "email",
+      "user_id",
+    ];
+
+    const keywordArray = [
+      "name",
+      "code",
+      "email",
+      "id_code",
+      "phone_number",
+    ].map((name) => ({
+      [name]: { [Op.like]: `%${req.query.keyword}%` },
+    }));
+
+    const opArray = keywordArray.filter((item) =>
+      queryAttribute.includes(Object.keys(item)[0])
+    );
+
+    const onlyEnable = queryParam2False(req.query.onlyEnable);
+    const onlyDisable = queryParam2False(req.query.onlyDisable);
+
+    const whereOption = {
+      where: {
+        ...(onlyEnable && { enable: true }),
+        ...(onlyDisable && { enable: false }),
+        ...(req.query.keyword && {
+          [Op.or]: opArray,
+        }),
+      },
+    };
+
+    const createSort =
+      req.query.sort === undefined ||
+      req.query.sort === "undefined" ||
+      req.query.sort === "";
+    req.query.sort === undefined ||
+    req.query.sort === "undefined" ||
+    req.query.sort === ""
+      ? []
+      : ["create_time", req.query.sort];
+    const nameSort =
+      req.query.item === undefined ||
+      req.query.item === "undefined" ||
+      req.query.item === ""
+        ? []
+        : ["name", req.query.item];
+
+    const sortArray = [createSort, nameSort];
+
+    const filterArray = sortArray.filter((item) =>
+      queryAttribute.includes(item[0])
+    );
+
+    try {
+      const total = await Employee.count(whereOption);
+      const { start, size, begin, totalPages } = getPage({
+        total,
+        ...req.query,
+      });
+
+      const employeeList = await Employee.findAll({
+        offset: begin,
+        limit: size,
+        attributes: queryAttribute,
+        ...whereOption,
+        ...(filterArray.length > 0 && { order: filterArray }),
+        raw: true,
+      });
+
+      const list = await Promise.all(
+        employeeList.map(async (employee) => {
+          const result = await User_Role.findOne({
+            attributes: ["role_id"],
+            where: {
+              user_id: employee.user_id,
+            },
+          });
+
+          return { ...employee, ...(result && {role: result.role_id}) };
+        })
+      );
+
+      return res.response(200, {
+        start,
+        size,
+        begin,
+        total,
+        totalPages,
+        list,
+      });
+    } catch (error) {
+      // log sql message with error.original.sqlMessage
+      console.log(error);
+      res.response(500);
+    }
+  },
   update: [
     multer().none(),
     async (req, res) => {
@@ -1666,7 +1766,7 @@ export const RoleController = {
         res.response(500);
       }
     },
-  ]
+  ],
 };
 
 export const PermissionController = {
