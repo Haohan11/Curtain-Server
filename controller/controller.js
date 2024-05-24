@@ -340,7 +340,7 @@ export const EmployeeController = {
     },
   ],
   read: async (req, res) => {
-    const { Employee, User_Role } = req.app;
+    const { Employee, User_Role, Role } = req.app;
     const queryAttribute = [
       "id",
       "enable",
@@ -427,7 +427,13 @@ export const EmployeeController = {
             },
           });
 
-          return { ...employee, ...(result && { role: result.role_id }) };
+          if (!result) return employee;
+
+          const { name } = await Role.findByPk(result.role_id, {
+            attributes: ["name"],
+          });
+
+          return { ...employee, ...(result && { role: result.role_id, role_name: name }) };
         })
       );
 

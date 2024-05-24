@@ -32,7 +32,7 @@ const tablesDependencies = {
   },
   Employee: {
     tableName: "Employee",
-    connectMiddlewares: ["Employee", "User", "User_Role"],
+    connectMiddlewares: ["Employee", "User", "User_Role", "Role"],
   },
   Environment: {
     tableName: "Environment",
