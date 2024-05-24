@@ -427,7 +427,7 @@ export const EmployeeController = {
             },
           });
 
-          return { ...employee, ...(result && {role: result.role_id}) };
+          return { ...employee, ...(result && { role: result.role_id }) };
         })
       );
 
@@ -448,10 +448,13 @@ export const EmployeeController = {
   update: [
     multer().none(),
     async (req, res) => {
-      const { Employee, User } = req.app;
+      const { Employee, User, User_Role } = req.app;
 
-      const { id } = req.body;
-      if (isNaN(parseInt(id))) return res.response(400, "Invalid id.");
+      const id = parseInt(req.body.id);
+      if (isNaN(id)) return res.response(400, "Invalid id.");
+
+      const role_id = parseInt(req.body.role);
+      if (isNaN(role_id)) return res.response(400, "Invalid role id.");
 
       const { validateEmployee: validator } = allValidator;
       const validatedData = await validator({ ...req.body, ...req._user });
@@ -489,6 +492,16 @@ export const EmployeeController = {
           {
             where: {
               id,
+            },
+          }
+        );
+
+        const { create_id, create_name, modify_id, modify_name } = req._user;
+        await User_Role.update(
+          { create_id, create_name, modify_id, modify_name, role_id },
+          {
+            where: {
+              user_id,
             },
           }
         );
