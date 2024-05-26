@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
 import { goHash } from "./model/helper.js";
+import getUserPermission from "./controller/getUserPermission.js";
 
 import { Routers } from "./routes.js";
 
@@ -197,13 +198,7 @@ app.post("/login", async function (req, res) {
   try {
     const { account, password } = req.body;
 
-    const {
-      user: User,
-      role: Role,
-      permission: Permission,
-      user_role: User_Role,
-      role_permission: Role_Permission,
-    } = req.app.sequelize.models;
+    const { user: User } = req.app.sequelize.models;
 
     const user = await User.findOne({
       where: {
@@ -213,15 +208,28 @@ app.post("/login", async function (req, res) {
 
     if (!user) return res.response(404, "帳號錯誤");
 
-    // const urResult = await User_Role.findOne({ where: { user_id: user.id } });
-    // if(!urResult || urResult.role_id) return res.response(401, "權限不足");
-
     const isPasswordCorrect = bcrypt.compareSync(password, user.password);
     if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
+
+    const permission = await getUserPermission(req, user);
+    if (permission === false) return res.response(500);
+    if (permission === "NoPermission") return res.response(401, "NoPermission");
+    if (
+      !permission.back?.modify &&
+      !permission.back?.view &&
+      !permission.stock?.modify &&
+      !permission.stock?.view &&
+      !permission.environment?.modify &&
+      !permission.environment?.view &&
+      !permission.account?.modify &&
+      !permission.account?.view
+    )
+      return res.response(401, "NoPermission");
 
     const payload = {
       user_account: account,
       user_password: password,
+      permission
     };
     const exp =
       Math.floor(Date.now() / 1000) +

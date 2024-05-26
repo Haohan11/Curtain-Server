@@ -4,7 +4,7 @@ import fs from "fs";
 import { Op } from "sequelize";
 
 import findStock from "./findStock.js";
-import getPermission from "./getPermission.js";
+import getAllPermission from "./getAllPermission.js";
 
 import {
   goHash,
@@ -1792,7 +1792,7 @@ export const PermissionController = {
   read: [
     async (req, res) => {
       try {
-        const handledPermissionList = await getPermission(req);
+        const handledPermissionList = await getAllPermission(req);
         res.response(200, { list: handledPermissionList });
       } catch {
         res.response(500);

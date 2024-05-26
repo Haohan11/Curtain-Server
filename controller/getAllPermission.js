@@ -1,4 +1,4 @@
-const getPermission = async (req, option) => {
+const getAllPermission = async (req, option) => {
   const { 
     permission: Permission, 
     permission_type: PermissionType 
@@ -51,4 +51,4 @@ const getPermission = async (req, option) => {
   return handledPermissionList;
 };
 
-export default getPermission;
+export default getAllPermission;
