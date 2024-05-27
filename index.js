@@ -194,6 +194,52 @@ app.post("/authcodecheck", multer().none(), async (req, res) => {
 app.use(connectDbMiddleWare);
 app.use(establishAssociation);
 
+app.post("/login-front", async function (req, res) {
+  try {
+    const { account, password } = req.body;
+
+    const { user: User } = req.app.sequelize.models;
+
+    const user = await User.findOne({
+      where: {
+        account: account,
+      },
+    });
+
+    if (!user) return res.response(404, "帳號錯誤");
+
+    const isPasswordCorrect = bcrypt.compareSync(password, user.password);
+    if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
+
+    const permission = await getUserPermission(req, user);
+    if (permission === false) return res.response(500);
+    if (permission === "NoPermission") return res.response(401, "NoPermission");
+    if (!permission.front?.modify && !permission.front?.view)
+      return res.response(401, "NoPermission");
+
+    const payload = {
+      user_account: account,
+      user_password: password,
+      permission
+    };
+    const exp =
+      Math.floor(Date.now() / 1000) +
+      (parseInt(process.env.EXPIRE_TIME) || 3600);
+    const token = jwt.sign({ payload, exp }, "my_secret_key");
+
+    res.response(200, {
+      id: user.id,
+      name: user.name,
+      token: token,
+      token_type: "bearer",
+      _exp: exp,
+    });
+  } catch (error) {
+    console.log(error);
+    res.response(500, { error });
+  }
+});
+
 app.post("/login", async function (req, res) {
   try {
     const { account, password } = req.body;
