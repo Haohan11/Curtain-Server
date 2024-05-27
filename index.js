@@ -220,7 +220,6 @@ app.post("/login-front", async function (req, res) {
     const payload = {
       user_account: account,
       user_password: password,
-      permission
     };
     const exp =
       Math.floor(Date.now() / 1000) +
@@ -232,6 +231,7 @@ app.post("/login-front", async function (req, res) {
       name: user.name,
       token: token,
       token_type: "bearer",
+      permission,
       _exp: exp,
     });
   } catch (error) {
@@ -275,7 +275,6 @@ app.post("/login", async function (req, res) {
     const payload = {
       user_account: account,
       user_password: password,
-      permission
     };
     const exp =
       Math.floor(Date.now() / 1000) +
@@ -287,6 +286,7 @@ app.post("/login", async function (req, res) {
       name: user.name,
       token: token,
       token_type: "bearer",
+      permission,
       _exp: exp,
     });
   } catch (error) {
