@@ -110,21 +110,14 @@ const makeRegularController = ({
           }),
         },
       };
-
-      whereOption.where;
-
-      // console.log("req.query.sort", req.query.sort);
       // console.log("req.query.item", req.query.item);
 
       const createSort =
         req.query.sort === undefined ||
         req.query.sort === "undefined" ||
-        req.query.sort === "";
-      req.query.sort === undefined ||
-      req.query.sort === "undefined" ||
-      req.query.sort === ""
-        ? []
-        : ["create_time", req.query.sort];
+        req.query.sort === ""
+          ? []
+          : ["create_time", req.query.sort];
       const nameSort =
         req.query.item === undefined ||
         req.query.item === "undefined" ||
@@ -433,7 +426,10 @@ export const EmployeeController = {
             attributes: ["name"],
           });
 
-          return { ...employee, ...(result && { role: result.role_id, role_name: name }) };
+          return {
+            ...employee,
+            ...(result && { role: result.role_id, role_name: name }),
+          };
         })
       );
 
@@ -1075,7 +1071,6 @@ export const StockController = {
         ...req.query,
         total,
       });
-      console.log("where option", whereOption);
 
       const stockList = (
         await Stock.findAll({
@@ -1688,6 +1683,11 @@ export const RoleController = {
       try {
         const roleList = await Role.findAll({
           attributes: ["id", "name", "description"],
+          where: {
+            ...(req.query.keyword && {
+              name: { [Op.like]: `%${req.query.keyword}%` },
+            }),
+          },
           raw: true,
         });
 
