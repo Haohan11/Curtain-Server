@@ -1,3 +1,5 @@
+import versionText from "./versionText.js"
+
 import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -53,6 +55,8 @@ app.use(express.json());
 
 // Add custom response method to res.response
 app.use(responseMiddleware);
+
+app.get("/version", async (req, res) => res.response(200, `Current version: ${versionText}`));
 
 app.post("/sendmail", multer().none(), async (req, res) => {
   const { UserSchema, MailAuthCodeSchema } = Schemas;
