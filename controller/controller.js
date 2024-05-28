@@ -581,16 +581,31 @@ export const AccountController = {
       const { Employee, User } = req.app;
       const { user_id } = req._user;
       const { validateEmployee: validator } = allValidator;
-      const validatedData = await validator({ ...req.body, ...req._user });
+
+      const employeeData = await Employee.findOne({
+        where: { user_id },
+      });
+
+      if (!employeeData) return res.response(400, "No such employee.");
+
+      const {
+        email: oldEmail,
+        password: oldPassword,
+        ...oldData
+      } = employeeData;
+
+      const validatedData = await validator({
+        ...oldData,
+        ...req.body,
+        ...req._user,
+        password: req.body.password ?? oldPassword,
+      });
       if (validatedData === false) return res.response(400, "Invalid format.");
 
       const { id_code, email, name, phone_number, password } = validatedData;
-      const hashedPassword = await goHash(password);
-
-      const { email: oldEmail } = await Employee.findOne({
-        attributes: ["user_id", "email"],
-        where: { user_id },
-      });
+      const hashedPassword = req.body.password
+        ? await goHash(password)
+        : oldPassword;
 
       try {
         await Employee.update(
