@@ -212,7 +212,7 @@ export const ColorNameController = (() => {
   const { create, read } = makeRegularController({
     tableName: "ColorName",
     read: {
-      queryAttribute: ["id", "enable", "name"],
+      queryAttribute: ["id", "enable", "name", "comment"],
     },
   });
 
@@ -1682,7 +1682,7 @@ export const RoleController = {
 
       try {
         const roleList = await Role.findAll({
-          attributes: ["id", "name", "description"],
+          attributes: ["id", "name", "description", "comment"],
           where: {
             ...(req.query.keyword && {
               name: { [Op.like]: `%${req.query.keyword}%` },

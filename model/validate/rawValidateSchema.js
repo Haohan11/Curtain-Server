@@ -52,6 +52,7 @@ export const validateStockImageSchema = {
 export const validateColorNameSchema = {
   enable: Yup.boolean(),
   name: Yup.string().max(15).required(),
+  comment: Yup.string(),
 };
 
 export const validateColorSchemeSchema = {
@@ -87,4 +88,5 @@ export const validateCombinationSchema = {
 
 export const validateRoleSchema = {
   name: Yup.string().min(2).required(),
+  comment: Yup.string(),
 };

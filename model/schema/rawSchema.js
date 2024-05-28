@@ -338,6 +338,10 @@ export const ColorNameSchema = {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    // -&achor-c
+    comment: {
+      type: DataTypes.TEXT("long"),
+    },
   },
   option: {
     tableName: "color_name",
@@ -606,6 +610,9 @@ export const MailAuthCodeSchema = {
 export const RoleSchema = {
   name: "role",
   cols: {
+    comment: {
+      type: DataTypes.TEXT("long"),
+    },
   },
   option: {
     tableName: "role",

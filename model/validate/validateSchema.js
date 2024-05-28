@@ -1,8 +1,10 @@
 import * as Yup from "yup";
 import * as rawValidateSchemas from "./rawValidateSchema.js";
 
-const authorSchema = {
+const fixedSchema = {
   name: Yup.string().required(),
+  code: Yup.string(),
+  description: Yup.string(),
   create_name: Yup.string().required(),
   create_id: Yup.string().required(),
   modify_name: Yup.string(),
@@ -12,7 +14,7 @@ const authorSchema = {
 const validateSchemas = Object.entries(rawValidateSchemas).reduce(
   (dict, [schemaName, schemaContent]) => ({
     ...dict,
-    [schemaName]: Yup.object(authorSchema).shape(schemaContent),
+    [schemaName]: Yup.object(fixedSchema).shape(schemaContent),
   }),
   {}
 );
