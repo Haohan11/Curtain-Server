@@ -196,6 +196,18 @@ app.post("/authcodecheck", multer().none(), async (req, res) => {
 
 // Add connection to res.app
 app.use(connectDbMiddleWare);
+
+app.get("/alter-tables", async (req, res) => {
+  try {
+    const { sequelize } = req.app;
+    Object.entries(Schemas).forEach(([name, schema]) => !name.includes("_") && createSchema(sequelize, schema));
+    await sequelize.sync({ alter: true });
+    res.response(200);
+  } catch {
+    res.response(500);
+  }
+})
+
 app.use(establishAssociation);
 
 app.post("/login-front", async function (req, res) {
