@@ -7,7 +7,6 @@ import * as Yup from "yup";
 export const validateEmployeeSchema = {
   enable: Yup.boolean(),
   role: Yup.number().integer(),
-  avatar: Yup.string(),
   email: Yup.string().email().required(),
   name: Yup.string().min(2).required(),
   id_code: Yup.string().matches(/^[A-Za-z]\d{9}$/).required(),

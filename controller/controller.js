@@ -458,17 +458,31 @@ export const EmployeeController = {
       const role_id = parseInt(req.body.role);
       if (isNaN(role_id)) return res.response(400, "Invalid role id.");
 
-      const { validateEmployee: validator } = allValidator;
-      const validatedData = await validator({ ...req.body, ...req._user });
-      if (validatedData === false) return res.response(400, "Invalid format.");
-
-      const { password } = validatedData;
-      const hashedPassword = await goHash(password);
-
       try {
-        const { user_id, email: oldEmail } = await Employee.findByPk(id, {
-          attributes: ["user_id", "email"],
+        const employeeData = await Employee.findByPk(id, {
+          attributes: ["user_id", "email", "password"],
         });
+        if (!employeeData) return res.response(400, "Employee Not Found.");
+
+        const {
+          user_id,
+          email: oldEmail,
+          password: oldPassword,
+        } = employeeData;
+
+        const { validateEmployee: validator } = allValidator;
+        const validatedData = await validator({
+          ...req.body,
+          ...req._user,
+          password: req.body.password || oldPassword,
+        });
+        if (validatedData === false)
+          return res.response(400, "Invalid format.");
+
+        const { password } = validatedData;
+        const hashedPassword = req.body.password
+          ? await goHash(password)
+          : oldPassword;
 
         const { name, email } = validatedData;
         user_id !== null &&
@@ -584,6 +598,7 @@ export const AccountController = {
 
       const employeeData = await Employee.findOne({
         where: { user_id },
+        raw: true,
       });
 
       if (!employeeData) return res.response(400, "No such employee.");
@@ -598,7 +613,7 @@ export const AccountController = {
         ...oldData,
         ...req.body,
         ...req._user,
-        password: req.body.password ?? oldPassword,
+        password: req.body.password || oldPassword,
       });
       if (validatedData === false) return res.response(400, "Invalid format.");
 
