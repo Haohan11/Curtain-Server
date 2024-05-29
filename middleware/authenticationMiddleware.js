@@ -8,16 +8,21 @@ const authenticationMiddleware = (req, res, next) => {
     token = "";
   }
 
-  const locationDict = {
-    3001: "my",
-    3000: "front",
-  };
+  const result = [false, false];
 
-  const keyChunk = locationDict[req.headers.host.split(":")[1]];
-  if (!keyChunk) return res.response(401);
+  jwt.verify(token, "front_secret_key", function (err, decoded) {
+    if (err) return;
 
-  jwt.verify(token, `${keyChunk}_secret_key`, function (err, decoded) {
-    if (err) return res.response(401);
+    const {
+      payload: { user_account },
+    } = decoded;
+
+    req._user = { user_account };
+    result[0] = true;
+  });
+
+  jwt.verify(token, "my_secret_key", function (err, decoded) {
+    if (err) return;
 
     const {
       payload: { user_account },
@@ -25,8 +30,10 @@ const authenticationMiddleware = (req, res, next) => {
 
     req._user = { user_account };
 
-    next();
+    result[1] = true;
   });
+
+  result.includes(true) ? next() : res.response(401);
 };
 
 export default authenticationMiddleware;
