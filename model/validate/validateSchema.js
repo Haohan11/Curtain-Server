@@ -3,8 +3,8 @@ import * as rawValidateSchemas from "./rawValidateSchema.js";
 
 const fixedSchema = {
   name: Yup.string().required(),
-  code: Yup.string(),
-  description: Yup.string(),
+  code: Yup.string().nullable(),
+  description: Yup.string().nullable(),
   create_name: Yup.string().required(),
   create_id: Yup.string().required(),
   modify_name: Yup.string(),

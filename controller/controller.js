@@ -513,14 +513,28 @@ export const EmployeeController = {
         );
 
         const { create_id, create_name, modify_id, modify_name } = req._user;
-        await User_Role.update(
-          { create_id, create_name, modify_id, modify_name, role_id },
-          {
-            where: {
+        const ur = await User_Role.findOne({
+          where: {
+            user_id,
+          },
+        });
+        ur === null
+          ? await User_Role.create({
               user_id,
-            },
-          }
-        );
+              create_id,
+              create_name,
+              modify_id,
+              modify_name,
+              role_id,
+            })
+          : await User_Role.update(
+              { create_id, create_name, modify_id, modify_name, role_id },
+              {
+                where: {
+                  user_id,
+                },
+              }
+            );
 
         res.response(200, `Updated Employee and User data success.`);
       } catch (error) {
