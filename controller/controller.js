@@ -761,7 +761,6 @@ export const EnvironmentController = {
         "comment",
         "width",
         "perspect",
-        "css_matrix",
       ],
     },
   })["read"],

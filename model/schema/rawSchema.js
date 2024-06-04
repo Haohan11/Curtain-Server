@@ -528,11 +528,6 @@ export const EnvironmentSchema = {
       allowNull: false,
     },
     // -&achor-env
-    css_matrix: {
-      type: DataTypes.TEXT("long"),
-      allowNull: false,
-    },
-    // -&achor-env
     comment: {
       type: DataTypes.TEXT("long"),
     },

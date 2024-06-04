@@ -31,7 +31,6 @@ export const validateEnvironmentSchema = {
   width: Yup.string(),
   cropline: Yup.string().required(),
   perspect: Yup.string().required(),
-  css_matrix: Yup.string().required(),
   comment: Yup.string(),
 };
 
