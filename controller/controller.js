@@ -760,6 +760,8 @@ export const EnvironmentController = {
         "cropline",
         "comment",
         "width",
+        "perspect",
+        "css_matrix",
       ],
     },
   })["read"],
