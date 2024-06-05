@@ -1,4 +1,4 @@
-import versionText from "./versionText.js"
+import versionText from "./versionText.js";
 
 import express from "express";
 import cors from "cors";
@@ -56,7 +56,9 @@ app.use(express.json());
 // Add custom response method to res.response
 app.use(responseMiddleware);
 
-app.get("/version", async (req, res) => res.response(200, `Current version: ${versionText}`));
+app.get("/version", async (req, res) =>
+  res.response(200, `Current version: ${versionText}`)
+);
 
 app.post("/sendmail", multer().none(), async (req, res) => {
   const { UserSchema, MailAuthCodeSchema } = Schemas;
@@ -200,13 +202,15 @@ app.use(connectDbMiddleWare);
 app.get("/alter-tables", async (req, res) => {
   try {
     const { sequelize } = req.app;
-    Object.entries(Schemas).forEach(([name, schema]) => !name.includes("_") && createSchema(sequelize, schema));
+    Object.entries(Schemas).forEach(
+      ([name, schema]) => !name.includes("_") && createSchema(sequelize, schema)
+    );
     await sequelize.sync({ alter: true });
     res.response(200);
   } catch {
     res.response(500);
   }
-})
+});
 
 app.use(establishAssociation);
 
@@ -214,15 +218,26 @@ app.post("/login-front", async function (req, res) {
   try {
     const { account, password } = req.body;
 
-    const { user: User } = req.app.sequelize.models;
+    const { user: User, employee: Employee } = req.app.sequelize.models;
 
     const user = await User.findOne({
       where: {
-        account: account,
+        account,
       },
     });
 
     if (!user) return res.response(404, "帳號錯誤");
+
+    // check employee enable
+    const employee = await Employee.findOne({
+      where: {
+        user_id: user.id,
+        enable: true,
+      },
+    });
+
+    if (!employee && account !== "admin")
+      return res.response(401, "Not enable.");
 
     const isPasswordCorrect = bcrypt.compareSync(password, user.password);
     if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
@@ -260,15 +275,26 @@ app.post("/login", async function (req, res) {
   try {
     const { account, password } = req.body;
 
-    const { user: User } = req.app.sequelize.models;
+    const { user: User, employee: Employee } = req.app.sequelize.models;
 
     const user = await User.findOne({
       where: {
-        account: account,
+        account,
       },
     });
 
     if (!user) return res.response(404, "帳號錯誤");
+
+    // check employee enable
+    const employee = await Employee.findOne({
+      where: {
+        user_id: user.id,
+        enable: true,
+      },
+    });
+    
+    if (!employee && account !== "admin")
+      return res.response(401, "Not enable.");
 
     const isPasswordCorrect = bcrypt.compareSync(password, user.password);
     if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
@@ -343,6 +369,21 @@ app.post(
     res.response(200, "Success change password.");
   }
 );
+
+app.post("/check-email", multer().none(), async (req, res) => {
+  try {
+    const { user: User } = req.app.sequelize.models;
+    const result = await User.findOne({
+      where: {
+        account: req.body.email,
+      },
+    });
+    return res.response(200, { exist: !!result });
+  } catch (error) {
+    console.log(error);
+    return res.response(500);
+  }
+});
 
 // jwt token authentication
 app.use(authenticationMiddleware);
