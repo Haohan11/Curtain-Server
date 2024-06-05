@@ -344,6 +344,7 @@ export const EmployeeController = {
       "phone_number",
       "email",
       "user_id",
+      "create_time",
     ];
 
     const keywordArray = [
@@ -376,12 +377,9 @@ export const EmployeeController = {
     const createSort =
       req.query.sort === undefined ||
       req.query.sort === "undefined" ||
-      req.query.sort === "";
-    req.query.sort === undefined ||
-    req.query.sort === "undefined" ||
-    req.query.sort === ""
-      ? []
-      : ["create_time", req.query.sort];
+      req.query.sort === ""
+        ? []
+        : ["create_time", req.query.sort];
     const nameSort =
       req.query.item === undefined ||
       req.query.item === "undefined" ||
@@ -428,6 +426,7 @@ export const EmployeeController = {
 
           return {
             ...employee,
+            enable: !!employee.enable,
             ...(result && { role: result.role_id, role_name: name }),
           };
         })
@@ -1690,7 +1689,7 @@ export const RoleController = {
         if (!Object.values(JSON.parse(permission)).includes(true))
           throw new Error("Invalid permission.");
       } catch {
-        return res.response(400, "Invalid permission.");
+        return res.response(400, "Invalid permission format.");
       }
 
       const validatedData = await validator({ ...req.body, ...req._user });
@@ -1727,7 +1726,7 @@ export const RoleController = {
 
       try {
         const roleList = await Role.findAll({
-          attributes: ["id", "name", "description", "comment"],
+          attributes: ["id", "name", "comment"],
           where: {
             ...(req.query.keyword && {
               name: { [Op.like]: `%${req.query.keyword}%` },
