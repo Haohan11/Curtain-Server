@@ -237,7 +237,7 @@ app.post("/login-front", async function (req, res) {
     });
 
     if (!employee && account !== "admin")
-      return res.response(401, "Not enable.");
+      return res.response(401, "NoPermission");
 
     const isPasswordCorrect = bcrypt.compareSync(password, user.password);
     if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
@@ -294,7 +294,7 @@ app.post("/login", async function (req, res) {
     });
     
     if (!employee && account !== "admin")
-      return res.response(401, "Not enable.");
+      return res.response(401, "NoPermission");
 
     const isPasswordCorrect = bcrypt.compareSync(password, user.password);
     if (!isPasswordCorrect) return res.response(403, "密碼錯誤");
