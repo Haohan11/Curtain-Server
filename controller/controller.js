@@ -1274,7 +1274,7 @@ export const StockController = {
         ...req.body,
         ...req._user,
         series_id: req.body.series,
-        supplier_id: not0Falsy2Undefined(JSON.parse(req.body.supplier)),
+        supplier_id: req.body.supplier || null,
       });
 
       if (validatedData === false) return res.response(400, "Invalid format.");
