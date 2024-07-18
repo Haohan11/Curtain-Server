@@ -815,7 +815,7 @@ export const StockController = {
             const [target, _index] = key.split("_");
             const index = parseInt(_index);
             if (
-              (target !== "color" && target !== "colorScheme") ||
+              !["color", "colorScheme", "description"].includes(target) ||
               isNaN(index)
             )
               return list;
@@ -824,13 +824,21 @@ export const StockController = {
 
             list[index] = {
               ...list[index],
-              [target]: target === "color" ? value : toArray(value),
+              [target]: ["color", "description"].includes(target) ? value : toArray(value),
             };
 
             return list;
           }, [])
           .filter(Boolean);
 
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
+          console.log("================ colorList ===================", colorData);
         if (colorData.length * 3 !== req.files.length) return res.response(400);
 
         // only color data is validate then we create stock
@@ -871,7 +879,7 @@ export const StockController = {
 
         // save color data
         await Promise.all(
-          colorData.map(async ({ color, colorScheme }, index) => {
+          colorData.map(async ({ color, colorScheme, description }, index) => {
             if ((color !== 0 && !color) || !colorScheme)
               return console.warn(
                 `Invalid ${!colorScheme ? "colorScheme" : "color"}_${index}.`
@@ -891,6 +899,7 @@ export const StockController = {
               color_image: transFilePath(req.files[index * 3 + 1].path),
               removal_image_name: req.files[index * 3 + 2].originalname,
               removal_image: transFilePath(req.files[index * 3 + 2].path),
+              description,
             });
             result.message += " stock_color,";
 
@@ -1189,6 +1198,7 @@ export const StockController = {
               "color_image_name",
               "removal_image",
               "removal_image_name",
+              "description",
             ],
             raw: true,
           });
@@ -1293,7 +1303,7 @@ export const StockController = {
           (await Promise.all(
             toArray(req.body.colorList).map(async (rawData) => {
               const color = JSON.parse(rawData);
-              const { id: colorId, color_name_id, colorSchemes } = color;
+              const { id: colorId, color_name_id, colorSchemes, description } = color;
               const isNewColor = colorId < 0;
 
               const { name } = await ColorName.findByPk(color_name_id);
@@ -1308,6 +1318,7 @@ export const StockController = {
                 stock_id: stockId,
                 color_name_id,
                 name,
+                description,
                 ...author,
                 ...["stock", "color", "removal"].reduce(
                   (imageDict, name, index) => {
