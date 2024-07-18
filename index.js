@@ -253,9 +253,14 @@ app.post("/login-front", async function (req, res) {
       user_password: password,
     };
     const exp =
-      Math.floor(Date.now() / 1000) +
-      (parseInt(process.env.EXPIRE_TIME) || 3600);
-    const token = jwt.sign({ payload, exp }, "front_secret_key");
+      process.env.EXPIRE_TIME === "Infinity"
+        ? null
+        : Math.floor(Date.now() / 1000) +
+          (parseInt(process.env.EXPIRE_TIME) || 3600);
+    const token = jwt.sign(
+      { payload, ...(exp !== null && { exp }) },
+      "front_secret_key"
+    );
 
     res.response(200, {
       id: user.id,
@@ -263,7 +268,7 @@ app.post("/login-front", async function (req, res) {
       token: token,
       token_type: "bearer",
       permission,
-      _exp: exp,
+      ...(exp !== null && { _exp: exp }),
     });
   } catch (error) {
     console.log(error);
@@ -292,7 +297,7 @@ app.post("/login", async function (req, res) {
         enable: true,
       },
     });
-    
+
     if (!employee && account !== "admin")
       return res.response(401, "NoPermission");
 
@@ -319,9 +324,14 @@ app.post("/login", async function (req, res) {
       user_password: password,
     };
     const exp =
-      Math.floor(Date.now() / 1000) +
-      (parseInt(process.env.EXPIRE_TIME) || 3600);
-    const token = jwt.sign({ payload, exp }, "my_secret_key");
+      process.env.EXPIRE_TIME === "Infinity"
+        ? null
+        : Math.floor(Date.now() / 1000) +
+          (parseInt(process.env.EXPIRE_TIME) || 3600);
+    const token = jwt.sign(
+      { payload, ...(exp !== null && { exp }) },
+      "my_secret_key"
+    );
 
     res.response(200, {
       id: user.id,
@@ -329,7 +339,7 @@ app.post("/login", async function (req, res) {
       token: token,
       token_type: "bearer",
       permission,
-      _exp: exp,
+      ...(exp !== null && { _exp: exp }),
     });
   } catch (error) {
     console.log(error);
