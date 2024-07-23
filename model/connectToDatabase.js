@@ -1,5 +1,8 @@
 import dotenv from "dotenv";
 import { Sequelize } from "sequelize";
+import { getCurrentTime } from "./helper.js";
+
+const logger = (msg) => console.log(`${getCurrentTime()} ${msg}`);
 
 const connectToDataBase = async () => {
   dotenv.config();
@@ -9,6 +12,7 @@ const connectToDataBase = async () => {
     host: DB_HOST,
     port: DB_PORT,
     dialect: "mysql",
+    logging: logger,
   });
 
   try {

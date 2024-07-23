@@ -148,6 +148,8 @@ export const addPadding = (() => {
   };
 })();
 
+export const addZeroPadding = addPadding("0");
+
 export const not0Falsy2Undefined = (target) =>
   target || target === 0 ? target : undefined;
 
@@ -189,3 +191,14 @@ export const filePathAppend = (path) => `${staticPathName}/${path}`;
 export const toArray = (target) => (Array.isArray(target) ? target : [target]);
 
 export const formatTime = (time) => time?.toISOString()?.replace(/T/, " ")?.replace(/\..+/, "")?.replace(/-/g, "/");
+
+export const getCurrentTime = () => {
+  const date = new Date();
+  const month = addZeroPadding(`${date.getMonth() + 1}`, 2);
+  const day = addZeroPadding(`${date.getDate()}`, 2);
+  const hour = addZeroPadding(`${date.getHours()}`, 2);
+  const minute = addZeroPadding(`${date.getMinutes()}`, 2);
+  const second = addZeroPadding(`${date.getSeconds()}`, 2);
+
+  return `${date.getFullYear()}-${month}-${day} ${hour}:${minute}:${second}`;
+};
