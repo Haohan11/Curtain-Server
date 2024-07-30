@@ -4,9 +4,11 @@ import Schemas from "../model/schema/schema.js";
 export default async (req, res, next) => {
   const { sequelize } = req.app
 
+  if(!sequelize) return res.response(500)
+
   const connectionCache = {};
   const createModel = (schema) => createSchema(sequelize, schema);
-
+  
   try {
     // loop all schemas
     Object.entries(Schemas).map(([schemaName, schema]) => {
